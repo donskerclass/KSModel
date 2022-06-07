@@ -5,7 +5,6 @@ model_settings = kw_settings()
 wgrid, wweights, scheb, sgrid, sweights, MW, MWinv = grids(model_params)
 @unpack shi, slo, sigs = model_params
 g = trunc_lognpdf.(sgrid, Ref(shi), Ref(slo), Ref(0.0), Ref(sigs)) # density g evaluated on sgrid
-g = dropdims(g, dims=1)
 L = sum(sweights .* g .* sgrid)                   # Aggregate Labor endowment
 
 # guess for the W function W(w) = beta R E u'(c_{t+1})
@@ -41,7 +40,6 @@ function sspolicy(params, K, L, wgrid, sgrid, wweights, sweights, Win, g)
         end
         Wout = β * R * q * kron(sweights .* (g / wage), wweights .* (c .^ (-γ)))
         dist = maximum(abs.(Wout - Win))
-        @show dist
         Win = damp * Wout + (1.0 - damp) * Win
         count += 1
     end

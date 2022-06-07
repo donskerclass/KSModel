@@ -34,7 +34,7 @@ function grids(params)
     wweights = (wscale / nw) * ones(nw)
 
     scheb = chebpts(ns, slo, shi)
-    sgrid = scheb[1]'
+    sgrid = scheb[1]
     sweights = dropdims(scheb[2]', dims=2)
 
     MW = sqrt(wscale / nw) * I(nw)
