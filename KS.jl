@@ -1,7 +1,6 @@
 using KSModel, Parameters, LinearAlgebra
-
+global K = 1.5
 model_params = kw_params()
-model_settings = kw_settings()
 wgrid, wweights, scheb, sgrid, sweights, MW, MWinv = grids(model_params)
 @unpack shi, slo, sigs = model_params
 g = trunc_lognpdf.(sgrid, Ref(shi), Ref(slo), Ref(0.0), Ref(sigs)) # density g evaluated on sgrid
@@ -59,7 +58,7 @@ function sspolicy(params, K, L, wgrid, sgrid, wweights, sweights, Win, g)
     return (c, ap, Wout, tr)
 end
 
-function findss(params, settings,
+function findss(params,
     K,
     L,
     wgrid,
@@ -70,7 +69,10 @@ function findss(params, settings,
     g)
 
     @unpack ns, nw, β, γ, α, δ, smoother, sigs, zhi, zlo = params
-    @unpack tol, count, maxit = settings
+
+    tol = 1 - 5
+    count = 1
+    maxit = 100
 
     c = zeros(nw)
     ap = zeros(nw)
@@ -91,10 +93,10 @@ function findss(params, settings,
 
         # find eigenvalue closest to 1
         (D, V) = eigen(LPMKF)
-        if abs(D[1] - 1) > 2e-1 # that's the tolerance we are allowing
+        if abs(D[end] - 1) > 2e-1 # that's the tolerance we are allowing
             @warn "your eigenvalue is too far from 1, something is wrong"
         end
-        wdist = MWinv * real(V[:, 1]) #Pick the eigen vecor associated with the largest
+        wdist = MWinv * real(V[:, end]) #Pick the eigen vector associated with the largest
         # eigenvalue and moving it back to values
 
         wdist = wdist / (wweights' * wdist) #Scale of eigenvectors not determinate: rescale to integrate to exactly 1
@@ -107,7 +109,7 @@ function findss(params, settings,
     return (Win, c, wdist, newK, KF)
 end
 
-(ell, c, μ, K, KF) = findss(model_params, model_settings,
+(ell, c, μ, K, KF) = findss(model_params,
     K,
     L,
     wgrid,
@@ -117,141 +119,133 @@ end
     Win,
     g)
 
-# function dmollifier(x::AbstractFloat, zhi::AbstractFloat, zlo::AbstractFloat, smoother::AbstractFloat)
-#     In = 0.443993816237631
-#     temp = (-1.0 + 2.0 * (x - zlo) / (zhi - zlo)) / smoother
-#     dy = -(2 * temp ./ ((1 - temp .^ 2) .^ 2)) .* (2 / (smoother * (zhi - zlo))) .* mollifier(x, zhi, zlo, smoother)
-# end
+# Make the Jacobian 
+@unpack α, δ, β, nw, ns, γ, zhi, zlo, smoother, rhoz = model_params
+JJ = zeros(4 * nw + 2, 8 * nw + 4)
 
-# # Make the Jacobian 
-# JJ = zeros(4 * nw + 2, 8 * nw + 4)
+# we will always order things XP YP X Y
+# convention is that capital letters generally refer to indices
+LMP = 1:nw
+LELLP = nw+1:2*nw
+KKP = 2 * nw + 1
+ZP = 2 * nw + 2
+MP = 2*nw+3:3*nw+2
+ELLP = 3*nw+3:4*nw+2
+LM = 4*nw+3:5*nw+2
+LELL = 5*nw+3:6*nw+2
+KK = 6 * nw + 3
+Z = 6 * nw + 4
+M = 6*nw+5:7*nw+4
+ELL = 7*nw+5:8*nw+4
 
-# # we will always order things XP YP X Y
-# # convention is that capital letters generally refer to indices
-# LMP = 1:nw
-# LELLP = nw+1:2*nw
-# KKP = 2 * nw + 1
-# ZP = 2 * nw + 2
-# MP = 2*nw+3:3*nw+2
-# ELLP = 3*nw+3:4*nw+2
-# LM = 4*nw+3:5*nw+2
-# LELL = 5*nw+3:6*nw+2
-# KK = 6 * nw + 3
-# Z = 6 * nw + 4
-# M = 6*nw+5:7*nw+4
-# ELL = 7*nw+5:8*nw+4
-
-# # create objects needed for solve.jl
-# funops = 1:4 # which operators output a function
-# F1 = 1:nw
-# F2 = nw+1:2*nw
-# F3 = 2*nw+1:3*nw
-# F4 = 3*nw+1:4*nw
-# F5 = 4*nw+1:4*nw+1
-# F6 = 4*nw+2:4*nw+2
+# create objects needed for solve.jl
+funops = 1:4 # which operators output a function
+F1 = 1:nw
+F2 = nw+1:2*nw
+F3 = 2*nw+1:3*nw
+F4 = 3*nw+1:4*nw
+F5 = 4*nw+1:4*nw+1
+F6 = 4*nw+2:4*nw+2
 
 
-# #Create auxiliary variables
-# c = min.(ell .^ (-1.0 / γ), wgrid) # Consumption Decision Rule
-# Wss = MPL(1.0, K)              # Steady state wages
-# Rss = MPK(1.0, K)              # Steady state Rk
+# Create auxiliary variables
+c = min.(ell .^ (-1.0 / γ), wgrid) # Consumption Decision Rule
+Wss = MPL(1.0, K, L, model_params)              # Steady state wages
+Rss = MPK(1.0, K, L, model_params)              # Steady state Rk
 
-# tic()
-# #KF equation
-# KFmollificand = (repmat(wgrid, 1, nw * ns) - Rss * repmat(wgrid' - c', nw, ns)) / Wss - kron(sgrid', ones(nw, nw))
-# μRHS = mollifier.(KFmollificand, zhi, zlo, smoother) * kron(sweights .* (g / Wss), wweights .* μ)
+#KF equation
+KFmollificand = (repeat(wgrid, 1, nw * ns) - Rss * repeat(wgrid' - c', nw, ns)) / Wss - kron(sgrid', ones(nw, nw))
+μRHS = mollifier.(KFmollificand, zhi, zlo, smoother) * kron(sweights .* (g / Wss), wweights .* μ)
 
-# ξ = zeros(nw, nw)
-# Γ = zeros(nw, nw)
-# AA = zeros(nw, nw)
-# ζ = zeros(nw, nw)
-# for iw = 1:nw
-#     for iwp = 1:nw
-#         sumnsξ = 0.0
-#         sumnsΓ = 0.0
-#         sumnsAA = 0.0
-#         sumnsζ = 0.0
-#         for iss = 1:ns
-#             mf = (wgrid[iwp] - Rss * (wgrid[iw] - c[iw])) / Wss - sgrid[iss]
-#             dm = dmollifier(mf, zhi, zlo, smoother)
-#             mm = mollifier(mf, zhi, zlo, smoother)
-#             sumnsξ += ((c[iwp] .^ (-γ)) / Wss) * dm * g[iss] * sweights[iss]
-#             sumnsΓ += ((c[iwp] .^ (-γ)) / Wss) * mm * g[iss] * sweights[iss]
-#             sumnsAA += (1.0 / Wss) * mm * g[iss] * sweights[iss]
-#             sumnsζ += (1.0 / Wss) * dm * g[iss] * sweights[iss]
-#         end
-#         ξ[iw, iwp] = sumnsξ
-#         Γ[iw, iwp] = sumnsΓ
-#         AA[iw, iwp] = sumnsAA
-#         ζ[iw, iwp] = sumnsζ
-#     end
-# end
+ξ = zeros(nw, nw)
+Γ = zeros(nw, nw)
+AA = zeros(nw, nw)
+ζ = zeros(nw, nw)
+for iw = 1:nw
+    for iwp = 1:nw
+        sumnsξ = 0.0
+        sumnsΓ = 0.0
+        sumnsAA = 0.0
+        sumnsζ = 0.0
+        for iss = 1:ns
+            mf = (wgrid[iwp] - Rss * (wgrid[iw] - c[iw])) / Wss - sgrid[iss]
+            dm = dmollifier(mf, zhi, zlo, smoother)
+            mm = mollifier(mf, zhi, zlo, smoother)
+            sumnsξ += ((c[iwp] .^ (-γ)) / Wss) * dm * g[iss] * sweights[iss]
+            sumnsΓ += ((c[iwp] .^ (-γ)) / Wss) * mm * g[iss] * sweights[iss]
+            sumnsAA += (1.0 / Wss) * mm * g[iss] * sweights[iss]
+            sumnsζ += (1.0 / Wss) * dm * g[iss] * sweights[iss]
+        end
+        ξ[iw, iwp] = sumnsξ
+        Γ[iw, iwp] = sumnsΓ
+        AA[iw, iwp] = sumnsAA
+        ζ[iw, iwp] = sumnsζ
+    end
+end
 
 
-# dRdK = -(1 - α) * ((Rss + δ - 1) / K)
-# dWdK = (α * Wss / K)
-# dRdZ = Rss + δ - 1.0
-# dWdZ = Wss
-# dYdK = α * (K^(α - 1)) * (L^(1 - α))
-# dYdZ = (K^α) * (L^(1 - α))
-# ellRHS = β * Rss * Γ * wweights
+dRdK = -(1 - α) * ((Rss + δ - 1) / K)
+dWdK = (α * Wss / K)
+dRdZ = Rss + δ - 1.0
+dWdZ = Wss
+dYdK = α * (K^(α - 1)) * (L^(1 - α))
+dYdZ = (K^α) * (L^(1 - α))
+ellRHS = β * Rss * Γ * wweights
 
-# # Fill in Jacobian
+# Fill in Jacobian
 
-# #Euler equation
+#Euler equation
 
-# JJ[F1, KKP] = (β * Γ * wweights - β * (Rss / Wss) * ((wgrid - c) .* (ξ * wweights))) * dRdK - (1.0 / Wss) * (ellRHS + ((β * Rss) / Wss) * ξ .* (repmat(wgrid', nw, 1) - Rss * repmat(wgrid - c, 1, nw)) * wweights) * dWdK
+JJ[F1, KKP] = (β * Γ * wweights - β * (Rss / Wss) * ((wgrid - c) .* (ξ * wweights))) * dRdK - (1.0 / Wss) * (ellRHS + ((β * Rss) / Wss) * ξ .* (repeat(wgrid', nw, 1) - Rss * repeat(wgrid - c, 1, nw)) * wweights) * dWdK
 
-# JJ[F1, ZP] = (β * Γ * wweights - β * (Rss / Wss) * ((wgrid - c) .* (ξ * wweights))) * dRdZ - (1.0 / Wss) * (ellRHS + ((β * Rss) / Wss) * ξ .* (repmat(wgrid', nw, 1) - Rss * repmat(wgrid - c, 1, nw)) * wweights) * dWdZ
+JJ[F1, ZP] = (β * Γ * wweights - β * (Rss / Wss) * ((wgrid - c) .* (ξ * wweights))) * dRdZ - (1.0 / Wss) * (ellRHS + ((β * Rss) / Wss) * ξ .* (repeat(wgrid', nw, 1) - Rss * repeat(wgrid - c, 1, nw)) * wweights) * dWdZ
 
-# JJ[F1, ELLP] = β * Rss * Γ * diagm((wweights .* (ell .^ (-(1.0 + γ) / γ)) .* (ell .^ (-1.0 / γ) .<= wgrid)) ./ c)
+JJ[F1, ELLP] = β * Rss * Γ * diagm((wweights .* (ell .^ (-(1.0 + γ) / γ)) .* (ell .^ (-1.0 / γ) .<= wgrid)) ./ c)
 
-# JJ[F1, ELL] = -(eye(nw) + diagm((β / γ) * (Rss * Rss / Wss) * (ξ * wweights) .* (ell .^ (-(1.0 + γ) / γ)) .* (ell .^ (-1.0 / γ) .<= wgrid)))
+JJ[F1, ELL] = -(I(nw) + diagm((β / γ) * (Rss * Rss / Wss) * (ξ * wweights) .* (ell .^ (-(1.0 + γ) / γ)) .* (ell .^ (-1.0 / γ) .<= wgrid)))
 
-# #KF Equation
-# JJ[F2, LM] = AA' * diagm(wweights)
+#KF Equation
+JJ[F2, LM] = AA' * diagm(wweights)
 
-# JJ[F2, LELL] = -(Rss / Wss) * (1.0 / γ) * ζ' * diagm(μ .* wweights .* (ell .^ (-(1.0 + γ) / γ)) .* (ell .^ (-1.0 / γ) .<= wgrid))
+JJ[F2, LELL] = -(Rss / Wss) * (1.0 / γ) * ζ' * diagm(μ .* wweights .* (ell .^ (-(1.0 + γ) / γ)) .* (ell .^ (-1.0 / γ) .<= wgrid))
 
-# JJ[F2, KK] = -(1.0 / Wss) * (ζ' .* repmat((wgrid - c)', nw, 1)) * (μ .* wweights) * dRdK - (μRHS / Wss + (1.0 / (Wss * Wss)) * (ζ' .* (repmat(wgrid, 1, nw) - Rss * repmat((wgrid - c)', nw, 1))) * (μ .* wweights)) * dWdK
+JJ[F2, KK] = -(1.0 / Wss) * (ζ' .* repeat((wgrid - c)', nw, 1)) * (μ .* wweights) * dRdK - (μRHS / Wss + (1.0 / (Wss * Wss)) * (ζ' .* (repeat(wgrid, 1, nw) - Rss * repeat((wgrid - c)', nw, 1))) * (μ .* wweights)) * dWdK
 
-# JJ[F2, Z] = -(1.0 / Wss) * (ζ' .* repmat((wgrid - c)', nw, 1)) * (μ .* wweights) * dRdZ - (μRHS / Wss + (1.0 / (Wss * Wss)) * (ζ' .* (repmat(wgrid, 1, nw) - Rss * repmat((wgrid - c)', nw, 1))) * (μ .* wweights)) * dWdZ
+JJ[F2, Z] = -(1.0 / Wss) * (ζ' .* repeat((wgrid - c)', nw, 1)) * (μ .* wweights) * dRdZ - (μRHS / Wss + (1.0 / (Wss * Wss)) * (ζ' .* (repeat(wgrid, 1, nw) - Rss * repeat((wgrid - c)', nw, 1))) * (μ .* wweights)) * dWdZ
 
-# JJ[F2, M] = -eye(nw)
+JJ[F2, M] = -I(nw)
 
-# #DEFN of LM(t+1) = M(t)  
-# JJ[F3, LMP] = eye(nw)
+#DEFN of LM(t+1) = M(t)  
+JJ[F3, LMP] = I(nw)
 
-# JJ[F3, M] = -eye(nw)
+JJ[F3, M] = -I(nw)
 
-# #DEFN of LELL(t+1) = ELL(t) 
-# JJ[F4, LELLP] = eye(nw)
+#DEFN of LELL(t+1) = ELL(t) 
+JJ[F4, LELLP] = I(nw)
 
-# JJ[F4, ELL] = -eye(nw)
+JJ[F4, ELL] = -I(nw)
 
-# # LOM K
-# JJ[F5, ELL] = -(1.0 / γ) * μ' * (diagm(wweights .* (ell .^ (-(1.0 + γ) / γ)) .* (ell .^ (-1.0 / γ) .<= wgrid)))
+# LOM K
+JJ[F5, ELL] = -(1.0 / γ) * μ' * (diagm(wweights .* (ell .^ (-(1.0 + γ) / γ)) .* (ell .^ (-1.0 / γ) .<= wgrid)))
 
-# JJ[F5, M] = -(wgrid - c)' * diagm(wweights)
+JJ[F5, M] = -(wgrid - c)' * diagm(wweights)
 
-# JJ[F5, KKP] = 1.0
+JJ[F5, KKP] .= 1.0
 
-# # TFP
-# JJ[F6, ZP] = 1.0
+# TFP
+JJ[F6, ZP] .= 1.0
 
-# JJ[F6, Z] = -rhoz
-
-# toc()
+JJ[F6, Z] .= -rhoz
 
 # # create q matrix which we will use later
-# qqq = eye(nw)
-# qqq[:, 1] = ones(nw)
-# (qqq1, rrr1) = qr(qqq)
+qqq = Matrix(I(nw))
+qqq[:, 1] = ones(nw)
+(qqq1, rrr1) = qr(qqq)
 
-# QW = qqq1[:, 2:end]'; #
-# Qleft = cat([1 2], eye(nw), QW, QW, eye(nw), [1], [1])
-# Qx = cat([1 2], QW, eye(nw), [1], [1])
-# Qy = cat([1 2], QW, eye(nw))
+QW = qqq1[:, 2:end]'; #
+Qleft = cat(I(nw), QW, QW, I(nw), [1], [1], dims=(1, 2))
+Qx = cat(QW, I(nw), [1], [1], dims=(1, 2))
+Qy = cat(QW, I(nw), dims=(1, 2))
 
 
 # include("solve.jl")

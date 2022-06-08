@@ -17,6 +17,3 @@ kw_params = @with_kw (β=0.95, # discount
     rhoz=0.95) # persistence of agg tfp
 
 const In = 0.443993816237631
-const K = 1.5
-
-kw_settings = @with_kw (tol=1e-5, count=1, maxit=100)

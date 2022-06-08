@@ -8,6 +8,7 @@ using BenchmarkTools
 include("params.jl")
 include("utils.jl")
 
-export kw_params, kw_settings, In, K, chebpts, grids, mollifier, trunc_lognpdf
+export kw_params, kw_settings, In, chebpts, grids, mollifier, trunc_lognpdf
+export dmollifier, MPK, MPL
 
 end # module

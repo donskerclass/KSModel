@@ -62,5 +62,19 @@ function trunc_lognpdf(x, UP, LO, mu, sig)
     return (x - LO .>= -eps()) .* (x - UP .<= eps()) .* pdf.(logn, x) / (cdf(logn, UP) - cdf(logn, LO))
 end
 
-MPK(Z, K) = α * Z * (K^(α - 1.0)) * (L^(1.0 - α)) + 1.0 - δ   # Marginal product of capital + 1-δ
-MPL(Z, K) = (1.0 - α) * Z * (K^α) * (L^(-α))  # Marginal product of labor
+function MPK(Z, K, L, params)
+    @unpack α, δ = params
+    α * Z * (K^(α - 1.0)) * (L^(1.0 - α)) + 1.0 - δ   # Marginal product of capital + 1-δ
+end
+
+function MPL(Z, K, L, params)
+    @unpack α = params
+    (1.0 - α) * Z * (K^α) * (L^(-α))  # Marginal product of labor
+end
+
+
+function dmollifier(x, zhi, zlo, smoother)
+    temp = (-1.0 + 2.0 * (x - zlo) / (zhi - zlo)) / smoother
+    dy = -(2 * temp ./ ((1 - temp .^ 2) .^ 2)) .* (2 / (smoother * (zhi - zlo))) .* mollifier(x, zhi, zlo, smoother)
+    return dy
+end
