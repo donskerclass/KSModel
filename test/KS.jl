@@ -20,7 +20,8 @@ include("../KS.jl") # run -top level script
 @test L ≈ 0.9475772259381134
 
 @test ell[4] ≈ 0.5543566792109383 atol = 1e-4
-@test c[123] ≈ 2.1228985161434397 atol = 1e-5
+# redefined in KS.jl, this is before
+# @test c[123] ≈ 2.1228985161434397 atol = 1e-5
 @test μ[end] ≈ 1.553272970569121e-12 atol = 1e-14
 @test K ≈ 1.5016671850875944 atol = 1e-4
 @test KF[42, 42] ≈ 0.9729289780918629 atol = 1e-5
