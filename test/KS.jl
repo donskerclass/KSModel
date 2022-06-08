@@ -60,3 +60,11 @@ include("../KS.jl") # run -top level script
 @test hx2[123, 321] ≈ -2.0419701017503358e-7 atol = 1e-6
 @test gx[50, 50] ≈ 0.08698854910415967 atol = 1e-5
 @test gx[17, 71] ≈ -0.0005336164864925171 atol = 1e-7
+
+@test wg[end] ≈ 12.172955974842766
+@test dcdell[50, 50] ≈ -3.1606898501726968 atol = 1e-4
+@test mpc[end] ≈ 0.40055381456278716 atol = 1e-4
+
+@test zIRFyc[end, end] ≈ -1.4238685507153613e-8 atol = 1e-7
+@test zIRFI[24] ≈ 0.0021339126754331365 atol = 1e-6
+@test iss ≈ 0.3003334370175189 atol = 1e-4

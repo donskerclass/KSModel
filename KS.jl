@@ -1,4 +1,4 @@
-using KSModel, Parameters, LinearAlgebra
+using KSModel, Parameters, LinearAlgebra, Plots
 global K = 1.5
 model_params = kw_params()
 wgrid, wweights, scheb, sgrid, sweights, MW, MWinv = grids(model_params)
@@ -251,192 +251,167 @@ Qy = cat(QW, I(nw), dims=(1, 2))
 gx2, hx2, gx, hx = solve(JJ, Qleft, Qx, Qy)
 
 
-# # make IRF's
+# make IRF's
 
-# close("all")
+# from now on we only plot things for cash grid points
+# with at least mindens = 1e-8 density in steady state
 
-# makefigs = 1
-# if makefigs == 1
-#     # from now on we only plot things for cash grid points
-#     # with at least mindens = 1e-8 density in steady state
-#     mindens = 1e-8
-#     maxw = find(μ .> mindens)[end]
-#     wg = wgrid[1:maxw]
-#     dur = 50 #Periods to compute IRFs
+if isempty(ARGS) # give any command line argument to stop
+    mindens = 1e-8
+    maxw = findlast(μ .> mindens)
+    wg = wgrid[1:maxw]
+    dur = 50
 
-#     # we will need this to make consumption shock
-#     dcdell = diagm((-1 / γ) * (ell .^ (-(1 / γ) - 1)) .* ((ell .^ (-1 / γ)) .<= wgrid))
-#     mpc = [1; (c[2:end] - c[1:end-1]) ./ (wgrid[2:end] - wgrid[1:end-1])]
+    # we will need this to make consumption shock
+    dcdell = diagm((-1 / γ) * (ell .^ (-(1 / γ) - 1)) .* ((ell .^ (-1 / γ)) .<= wgrid))
+    mpc = [1; (c[2:end] - c[1:end-1]) ./ (wgrid[2:end] - wgrid[1:end-1])]
 
-#     # first, shock to aggregate component of income
-#     zshock = 0.01
-#     zIRFxc = zeros(2 * nw + 1, dur) #IRF to income shock, coefficient values
-#     zIRFxc[2*nw+1, 1] = zshock
-#     for t = 1:dur-1
-#         zIRFxc[:, t+1] = hx * zIRFxc[:, t]
-#     end
-#     zIRFyc = gx * zIRFxc #y response
+    # first, shock to aggregate component of income
+    zshock = 0.01
+    zIRFxc = zeros(2 * nw + 1, dur) #IRF to income shock, coefficient values
+    zIRFxc[2*nw+1, 1] = zshock
+    for t = 1:dur-1
+        zIRFxc[:, t+1] = hx * zIRFxc[:, t]
+    end
+    zIRFyc = gx * zIRFxc #y response
 
-#     #Shocks in terms of grid values
-#     zIRFxp = Qx'zIRFxc
-#     zIRFyp = Qy'zIRFyc
+    #Shocks in terms of grid values
+    zIRFxp = Qx'zIRFxc
+    zIRFyp = Qy'zIRFyc
 
-#     zIRFμ = zIRFyp[1:nw, :]
-#     zIRFell = zIRFyp[nw+1:2*nw, :]
-#     zIRFk = zIRFxp[2*nw+1, :]
-#     zIRFz = zIRFxp[2*nw+2, :]
-#     zIRFwags = dWdK * zIRFk + dWdZ * zIRFz
-#     zIRFrags = dRdK * zIRFk + dRdZ * zIRFz
-#     zIRFgdp = dYdK * zIRFk + dYdZ * zIRFz
-#     zIRFcfun = dcdell * zIRFell
-#     zIRFC = zIRFcfun' * (wweights .* μ) + zIRFμ' * (wweights .* c)
-#     zIRFI = zIRFk[2:end] - (1 - δ) * zIRFk[1:end-1]
+    zIRFμ = zIRFyp[1:nw, :]
+    zIRFell = zIRFyp[nw+1:2*nw, :]
+    zIRFk = zIRFxp[2*nw+1, :]
+    zIRFz = zIRFxp[2*nw+2, :]
+    zIRFwags = dWdK * zIRFk + dWdZ * zIRFz
+    zIRFrags = dRdK * zIRFk + dRdZ * zIRFz
+    zIRFgdp = dYdK * zIRFk + dYdZ * zIRFz
+    zIRFcfun = dcdell * zIRFell
+    zIRFC = zIRFcfun' * (wweights .* μ) + zIRFμ' * (wweights .* c)
+    zIRFI = zIRFk[2:end] - (1 - δ) * zIRFk[1:end-1]
 
-#     yss = (K^α) * (L^(1 - α))
-#     css = μ' * (wweights .* c)
-#     iss = δ * K
+    yss = (K^α) * (L^(1 - α))
+    css = μ' * (wweights .* c)
+    iss = δ * K
 
-#     figure()
-#     ax = axes()
-#     ax[:tick_params]("both", labelsize=18)
-#     plot(1:dur, (zIRFgdp / yss) * 100)
-#     xlabel("t")
-#     savefig("gdpdIRF.eps")
+    p1 = plot(1:dur, (zIRFgdp / yss) * 100, xlabel="t", title="gdpdIRF", legend=false)
+    savefig(p1, "plots/gdpdIRF.png")
 
-#     figure()
-#     ax = axes()
-#     ax[:tick_params]("both", labelsize=18)
-#     plot(1:dur, (zIRFC / css) * 100)
-#     xlabel("t")
-#     savefig("aggCIRF.eps")
+    p2 = plot(1:dur, (zIRFC / css) * 100, xlabel="t", title="aggCIRF", legend=false)
+    savefig(p2, "plots/aggCIRF.png")
 
-#     figure()
-#     ax = axes()
-#     ax[:tick_params]("both", labelsize=18)
-#     plot(1:dur-1, (zIRFI / iss) * 100)
-#     xlabel("t")
-#     savefig("inventoriesIRF.eps")
+    p3 = plot(1:dur-1, (zIRFI / iss) * 100, xlabel="t", title="inventoriesIRF", legend=false)
+    savefig(p3, "plots/inventoriesIRF.png")
 
-#     figure()
-#     ax = axes()
-#     ax[:tick_params]("both", labelsize=18)
-#     plot(1:dur, (zIRFz) * 100)
-#     xlabel("t")
-#     savefig("zIRF.eps")
+    p4 = plot(1:dur, (zIRF) * 100, xlabel="t", title="zIRF", legend=false)
+    savefig(p4, "plots/zIRF.png")
 
-#     figure()
-#     ax = axes()
-#     ax[:tick_params]("both", labelsize=18)
-#     plot(1:dur, (zIRFrags / Rss) * 100)
-#     xlabel("t")
-#     savefig("ragsIRF.eps")
+    p5 = plot(1:dur, (zIRFrags / Rss) * 100, xlabel="t", title="ragsIRF", legend=false)
+    savefig(p5, "plots/ragsIRF.png")
 
-#     figure()
-#     ax = axes()
-#     ax[:tick_params]("both", labelsize=18)
-#     plot(1:dur, (zIRFwags / Wss) * 100)
-#     xlabel("t")
-#     savefig("wagsIRF.eps")
-
-#     thingtoplot = zIRFμ[1:maxw, :]
-#     fig = figure(figsize=(8, 6))
-#     #ax = fig[:gca](projection="3d")
-#     ax = Axes3D(fig)
-#     ax[:set_zlim](minimum(thingtoplot), maximum(thingtoplot))
-#     xgrid = repmat(wg, 1, dur)
-#     ygrid = repmat((1:dur)', maxw, 1)
-#     ax[:plot_surface](xgrid, ygrid, thingtoplot, cmap=ColorMap("jet"),
-#         edgecolors="k", linewidth=0.25)
-#     xlabel("w")
-#     ylabel("t")
-#     savefig("wealthIRFdist.eps")
+    p6 = plot(1:dur, (zIRFwags / Wss) * 100, xlabel="t", title="wagsIRF", legend=false)
+    savefig(p6, "plots/wagsIRF.png")
 
 
-#     thingtoplot = zIRFcfun[1:maxw, :]
-#     fig = figure(figsize=(8, 6))
-#     #ax = fig[:gca](projection="3d")
-#     ax = Axes3D(fig)
-#     ax[:set_zlim](minimum(thingtoplot), maximum(thingtoplot))
-#     xgrid = repmat(wg, 1, dur)
-#     ygrid = repmat((1:dur)', maxw, 1)
-#     ax[:plot_surface](xgrid, ygrid, thingtoplot, cmap=ColorMap("jet"),
-#         edgecolors="k", linewidth=0.25)
-#     xlabel("w")
-#     ylabel("t")
-#     savefig("cfunIRF.eps")
+
+    # thingtoplot = zIRFμ[1:maxw, :]
+    # fig = figure(figsize=(8, 6))
+    # #ax = fig[:gca](projection="3d")
+    # ax = Axes3D(fig)
+    # ax[:set_zlim](minimum(thingtoplot), maximum(thingtoplot))
+    # xgrid = repmat(wg, 1, dur)
+    # ygrid = repmat((1:dur)', maxw, 1)
+    # ax[:plot_surface](xgrid, ygrid, thingtoplot, cmap=ColorMap("jet"),
+    #     edgecolors="k", linewidth=0.25)
+    # xlabel("w")
+    # ylabel("t")
+    # savefig("wealthIRFdist.eps")
 
 
-#     figure()
-#     ax = axes()
-#     ax[:tick_params]("both", labelsize=18)
-#     plot(wg, c[1:maxw])
-#     xlabel("w")
-#     savefig("cSSpolicy.eps")
-
-#     figure()
-#     ax = axes()
-#     ax[:tick_params]("both", labelsize=18)
-#     plot(wg, μ[1:maxw])
-#     xlabel("w")
-#     savefig("wealthSSdist.eps")
-
-#     indic = ones(nw, nw)
-#     indic = indic .* (broadcast(-, 1:nw, (1:nw)') .> 0)
-
-#     shock = 1
-#     μsim = repmat(μ, 1, dur) + shock * zIRFμ
-#     csim = repmat(c, 1, dur) + shock * zIRFcfun
-#     Msim = indic * diagm(wweights) * μsim
-#     Mss = indic * diagm(wweights) * repmat(μ, 1, dur)
-
-#     cstep = 0.04
-#     clo = [1:cstep:2...]
-#     chi = clo + cstep
-#     #clo[1] = c[1]-eps()
-#     #chi[end] = c[end]
-#     cgrid = (chi + clo) / 2.0
-#     nbins = length(clo)
-#     n10c = zeros(nbins, dur)
-#     n10s = zeros(nbins, dur)
-
-#     for t = 1:dur
-#         for i = 1:nbins
-#             imin = find(c .> clo[i])[1]
-#             imax = find(c .<= chi[i])[end]
-#             n10s[i, :] = Mss[imax, :] - Mss[imin, :]
-#             n10c[i, :] = Msim[imax, :] - Msim[imin, :]
-#         end
-#     end
-#     qIRFc = (n10c - n10s) / shock
+    # thingtoplot = zIRFcfun[1:maxw, :]
+    # fig = figure(figsize=(8, 6))
+    # #ax = fig[:gca](projection="3d")
+    # ax = Axes3D(fig)
+    # ax[:set_zlim](minimum(thingtoplot), maximum(thingtoplot))
+    # xgrid = repmat(wg, 1, dur)
+    # ygrid = repmat((1:dur)', maxw, 1)
+    # ax[:plot_surface](xgrid, ygrid, thingtoplot, cmap=ColorMap("jet"),
+    #     edgecolors="k", linewidth=0.25)
+    # xlabel("w")
+    # ylabel("t")
+    # savefig("cfunIRF.eps")
 
 
-#     # thingtoplot = n10c
-#     # fig = figure(figsize=(8,6))
-#     # #ax = fig[:gca](projection="3d")
-#     # ax = Axes3D(fig)
-#     # ax[:set_zlim](minimum(thingtoplot), maximum(thingtoplot));
-#     # xgrid = repmat(cgrid,1,dur);
-#     # ygrid = repmat((1:dur)',nbins,1);
-#     # ax[:plot_surface](xgrid, ygrid, thingtoplot, cmap=ColorMap("jet"),
-#     #                   edgecolors="k",linewidth=0.25)
-#     # xlabel("w")
-#     # ylabel("t")
-#     # zlabel("c_t(w)")
-#     # title("response of consumption distribution to Z")
-#     # savefig("cdist.eps")
+    # figure()
+    # ax = axes()
+    # ax[:tick_params]("both", labelsize=18)
+    # plot(wg, c[1:maxw])
+    # xlabel("w")
+    # savefig("cSSpolicy.eps")
+
+    # figure()
+    # ax = axes()
+    # ax[:tick_params]("both", labelsize=18)
+    # plot(wg, μ[1:maxw])
+    # xlabel("w")
+    # savefig("wealthSSdist.eps")
+
+    # indic = ones(nw, nw)
+    # indic = indic .* (broadcast(-, 1:nw, (1:nw)') .> 0)
+
+    # shock = 1
+    # μsim = repmat(μ, 1, dur) + shock * zIRFμ
+    # csim = repmat(c, 1, dur) + shock * zIRFcfun
+    # Msim = indic * diagm(wweights) * μsim
+    # Mss = indic * diagm(wweights) * repmat(μ, 1, dur)
+
+    # cstep = 0.04
+    # clo = [1:cstep:2...]
+    # chi = clo + cstep
+    # #clo[1] = c[1]-eps()
+    # #chi[end] = c[end]
+    # cgrid = (chi + clo) / 2.0
+    # nbins = length(clo)
+    # n10c = zeros(nbins, dur)
+    # n10s = zeros(nbins, dur)
+
+    # for t = 1:dur
+    #     for i = 1:nbins
+    #         imin = find(c .> clo[i])[1]
+    #         imax = find(c .<= chi[i])[end]
+    #         n10s[i, :] = Mss[imax, :] - Mss[imin, :]
+    #         n10c[i, :] = Msim[imax, :] - Msim[imin, :]
+    #     end
+    # end
+    # qIRFc = (n10c - n10s) / shock
 
 
-#     thingtoplot = qIRFc
-#     fig = figure(figsize=(8, 6))
-#     #ax = fig[:gca](projection="3d")
-#     ax = Axes3D(fig)
-#     ax[:set_zlim](minimum(thingtoplot), maximum(thingtoplot))
-#     xgrid = repmat(cgrid, 1, dur)
-#     ygrid = repmat((1:dur)', nbins, 1)
-#     ax[:plot_surface](xgrid, ygrid, thingtoplot, cmap=ColorMap("jet"),
-#         edgecolors="k", linewidth=0.25)
-#     xlabel("w")
-#     ylabel("t")
-#     savefig("cdist.eps")
-# end
-# toc()
+    # # thingtoplot = n10c
+    # # fig = figure(figsize=(8,6))
+    # # #ax = fig[:gca](projection="3d")
+    # # ax = Axes3D(fig)
+    # # ax[:set_zlim](minimum(thingtoplot), maximum(thingtoplot));
+    # # xgrid = repmat(cgrid,1,dur);
+    # # ygrid = repmat((1:dur)',nbins,1);
+    # # ax[:plot_surface](xgrid, ygrid, thingtoplot, cmap=ColorMap("jet"),
+    # #                   edgecolors="k",linewidth=0.25)
+    # # xlabel("w")
+    # # ylabel("t")
+    # # zlabel("c_t(w)")
+    # # title("response of consumption distribution to Z")
+    # # savefig("cdist.eps")
+
+
+    # thingtoplot = qIRFc
+    # fig = figure(figsize=(8, 6))
+    # #ax = fig[:gca](projection="3d")
+    # ax = Axes3D(fig)
+    # ax[:set_zlim](minimum(thingtoplot), maximum(thingtoplot))
+    # xgrid = repmat(cgrid, 1, dur)
+    # ygrid = repmat((1:dur)', nbins, 1)
+    # ax[:plot_surface](xgrid, ygrid, thingtoplot, cmap=ColorMap("jet"),
+    #     edgecolors="k", linewidth=0.25)
+    # xlabel("w")
+    # ylabel("t")
+    # savefig("cdist.eps")
+end
