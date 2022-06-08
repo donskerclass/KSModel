@@ -248,11 +248,7 @@ Qx = cat(QW, I(nw), [1], [1], dims=(1, 2))
 Qy = cat(QW, I(nw), dims=(1, 2))
 
 
-# include("solve.jl")
-
-# tic()
-# gx2, hx2, gx, hx = solve(JJ, Qleft, Qx, Qy)
-# toc()
+gx2, hx2, gx, hx = solve(JJ, Qleft, Qx, Qy)
 
 
 # # make IRF's
