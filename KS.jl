@@ -9,106 +9,6 @@ L = sum(sweights .* g .* sgrid)                   # Aggregate Labor endowment
 # guess for the W function W(w) = beta R E u'(c_{t+1})
 Win = 0.3 * ones(model_params.nw)
 
-
-function sspolicy(params, K, L, wgrid, sgrid, wweights, sweights, Win, g)
-    # outputs: [c,ap,Wout,tr]
-
-    @unpack nw, ns, β, γ, α, δ, smoother, sigs, zhi, zlo = params
-
-    c = zeros(nw)      # consumption
-    ap = zeros(nw)      # savings
-    damp = 0.8          # how much we update W guess
-    count = 1
-    dist = 1.0          # distance between Win and Wout on decision rules
-    tol = 1e-5          # acceptable error 
-    Wout = copy(Win)    # initialize Wout
-    R = α * (K^(α - 1.0)) * (L^(1.0 - α)) + 1.0 - δ
-    wage = (1.0 - α) * (K^α) * (L^(-α))
-    tr = zeros(nw, nw)   # transition matrix mapping todays dist of w to w'
-    q = zeros(nw, nw * ns) # auxilary variable to compute LHS of euler
-    while dist > tol && count < 5000
-        # compute c(w) given guess for Win = β*R*E[u'(c_{t+1})]
-        c = min.(Win .^ (-1.0 / γ), wgrid)
-        ap = wgrid - c  # compute ap(w) given guess for Win
-        for iw = 1:nw
-            for iwp = 1:nw
-                for iss = 1:ns
-                    q[iw, nw*(iss-1)+iwp] = mollifier((wgrid[iwp] - R * ap[iw]) / wage - sgrid[iss], zhi, zlo, smoother)
-                end
-            end
-        end
-        Wout = β * R * q * kron(sweights .* (g / wage), wweights .* (c .^ (-γ)))
-        dist = maximum(abs.(Wout - Win))
-        Win = damp * Wout + (1.0 - damp) * Win
-        count += 1
-    end
-    if count == 5000
-        @warn "Euler iteration did not converge"
-    end
-
-    for iw = 1:nw
-        for iwp = 1:nw
-            sumns = 0.0
-            for isp = 1:ns
-                sumns += mollifier((wgrid[iwp] - R * ap[iw]) / wage - sgrid[isp], zhi, zlo, smoother) * (g[isp] / wage) * sweights[isp]
-            end
-            tr[iwp, iw] = sumns
-        end
-    end
-    return (c, ap, Wout, tr)
-end
-
-function findss(params,
-    K,
-    L,
-    wgrid,
-    sgrid,
-    wweights,
-    sweights,
-    Win,
-    g)
-
-    @unpack ns, nw, β, γ, α, δ, smoother, sigs, zhi, zlo = params
-
-    tol = 1 - 5
-    count = 1
-    maxit = 100
-
-    c = zeros(nw)
-    ap = zeros(nw)
-    KF = zeros(nw, nw)
-    wdist = zeros(nw)
-    diseqm = 1234.5
-    newK = 0.0
-    Kdamp = 0.1
-    while abs(diseqm) > tol && count < maxit # clearing markets
-        (c, ap, Win, KF) = sspolicy(params, K, L, wgrid, sgrid, wweights, sweights, Win, g)
-        # sspolicy returns the consumption decision rule, a prime
-        # decision rule, Win = updated β R u'(c_{t+1}), 
-        # KF is the Kolmogorov foward operator
-        # and is the map which moves you from cash on hand distribution
-        # today to cash on had dist tomorrow
-
-        LPMKF = MW * KF * MW'
-
-        # find eigenvalue closest to 1
-        (D, V) = eigen(LPMKF)
-        if abs(D[end] - 1) > 2e-1 # that's the tolerance we are allowing
-            @warn "your eigenvalue is too far from 1, something is wrong"
-        end
-        wdist = MWinv * real(V[:, end]) #Pick the eigen vector associated with the largest
-        # eigenvalue and moving it back to values
-
-        wdist = wdist / (wweights' * wdist) #Scale of eigenvectors not determinate: rescale to integrate to exactly 1
-        newK = wweights' * (wdist .* ap)  #compute excess supply of savings, which is a fn of w
-        diseqm = newK - K
-        #println(newK)
-        K += Kdamp * diseqm
-        count += 1
-    end
-    return (Win, c, wdist, newK, KF)
-end
-
 (ell, c, μ, K, KF) = findss(model_params,
     K,
     L,
@@ -116,7 +16,7 @@ end
     sgrid,
     wweights,
     sweights,
-    Win,
+    Win, MW, MWinv,
     g)
 
 # Make the Jacobian 
@@ -255,63 +155,61 @@ gx2, hx2, gx, hx = solve(JJ, Qleft, Qx, Qy)
 
 # from now on we only plot things for cash grid points
 # with at least mindens = 1e-8 density in steady state
+mindens = 1e-8
+maxw = findlast(μ .> mindens)
+wg = wgrid[1:maxw]
+dur = 50
 
-if isempty(ARGS) # give any command line argument to stop
-    mindens = 1e-8
-    maxw = findlast(μ .> mindens)
-    wg = wgrid[1:maxw]
-    dur = 50
+# we will need this to make consumption shock
+dcdell = diagm((-1 / γ) * (ell .^ (-(1 / γ) - 1)) .* ((ell .^ (-1 / γ)) .<= wgrid))
+mpc = [1; (c[2:end] - c[1:end-1]) ./ (wgrid[2:end] - wgrid[1:end-1])]
 
-    # we will need this to make consumption shock
-    dcdell = diagm((-1 / γ) * (ell .^ (-(1 / γ) - 1)) .* ((ell .^ (-1 / γ)) .<= wgrid))
-    mpc = [1; (c[2:end] - c[1:end-1]) ./ (wgrid[2:end] - wgrid[1:end-1])]
+# first, shock to aggregate component of income
+zshock = 0.01
+zIRFxc = zeros(2 * nw + 1, dur) #IRF to income shock, coefficient values
+zIRFxc[2*nw+1, 1] = zshock
+for t = 1:dur-1
+    zIRFxc[:, t+1] = hx * zIRFxc[:, t]
+end
+zIRFyc = gx * zIRFxc #y response
 
-    # first, shock to aggregate component of income
-    zshock = 0.01
-    zIRFxc = zeros(2 * nw + 1, dur) #IRF to income shock, coefficient values
-    zIRFxc[2*nw+1, 1] = zshock
-    for t = 1:dur-1
-        zIRFxc[:, t+1] = hx * zIRFxc[:, t]
-    end
-    zIRFyc = gx * zIRFxc #y response
+#Shocks in terms of grid values
+zIRFxp = Qx'zIRFxc
+zIRFyp = Qy'zIRFyc
 
-    #Shocks in terms of grid values
-    zIRFxp = Qx'zIRFxc
-    zIRFyp = Qy'zIRFyc
+zIRFμ = zIRFyp[1:nw, :]
+zIRFell = zIRFyp[nw+1:2*nw, :]
+zIRFk = zIRFxp[2*nw+1, :]
+zIRFz = zIRFxp[2*nw+2, :]
+zIRFwags = dWdK * zIRFk + dWdZ * zIRFz
+zIRFrags = dRdK * zIRFk + dRdZ * zIRFz
+zIRFgdp = dYdK * zIRFk + dYdZ * zIRFz
+zIRFcfun = dcdell * zIRFell
+zIRFC = zIRFcfun' * (wweights .* μ) + zIRFμ' * (wweights .* c)
+zIRFI = zIRFk[2:end] - (1 - δ) * zIRFk[1:end-1]
 
-    zIRFμ = zIRFyp[1:nw, :]
-    zIRFell = zIRFyp[nw+1:2*nw, :]
-    zIRFk = zIRFxp[2*nw+1, :]
-    zIRFz = zIRFxp[2*nw+2, :]
-    zIRFwags = dWdK * zIRFk + dWdZ * zIRFz
-    zIRFrags = dRdK * zIRFk + dRdZ * zIRFz
-    zIRFgdp = dYdK * zIRFk + dYdZ * zIRFz
-    zIRFcfun = dcdell * zIRFell
-    zIRFC = zIRFcfun' * (wweights .* μ) + zIRFμ' * (wweights .* c)
-    zIRFI = zIRFk[2:end] - (1 - δ) * zIRFk[1:end-1]
+yss = (K^α) * (L^(1 - α))
+css = μ' * (wweights .* c)
+iss = δ * K
 
-    yss = (K^α) * (L^(1 - α))
-    css = μ' * (wweights .* c)
-    iss = δ * K
-
+if !isempty(ARGS) # give any command line argument to plot
     p1 = plot(1:dur, (zIRFgdp / yss) * 100, xlabel="t", title="gdpdIRF", legend=false)
-    savefig(p1, "plots/gdpdIRF.png")
+    savefig(p1, "plots/KS/gdpdIRF.png")
 
     p2 = plot(1:dur, (zIRFC / css) * 100, xlabel="t", title="aggCIRF", legend=false)
-    savefig(p2, "plots/aggCIRF.png")
+    savefig(p2, "plots/KS/aggCIRF.png")
 
     p3 = plot(1:dur-1, (zIRFI / iss) * 100, xlabel="t", title="inventoriesIRF", legend=false)
-    savefig(p3, "plots/inventoriesIRF.png")
+    savefig(p3, "plots/KS/inventoriesIRF.png")
 
-    p4 = plot(1:dur, (zIRF) * 100, xlabel="t", title="zIRF", legend=false)
-    savefig(p4, "plots/zIRF.png")
+    p4 = plot(1:dur, (zIRFz) * 100, xlabel="t", title="zIRF", legend=false)
+    savefig(p4, "plots/KS/zIRF.png")
 
     p5 = plot(1:dur, (zIRFrags / Rss) * 100, xlabel="t", title="ragsIRF", legend=false)
-    savefig(p5, "plots/ragsIRF.png")
+    savefig(p5, "plots/KS/ragsIRF.png")
 
     p6 = plot(1:dur, (zIRFwags / Wss) * 100, xlabel="t", title="wagsIRF", legend=false)
-    savefig(p6, "plots/wagsIRF.png")
-
+    savefig(p6, "plots/KS/wagsIRF.png")
 
 
     # thingtoplot = zIRFμ[1:maxw, :]

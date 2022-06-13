@@ -1,7 +1,8 @@
 using Distributions
 using ForwardDiff
+include("ChebyshevStuff.jl")
 using ChebyshevStuff
-using PyPlot
+# using PyPlot
 
 
 # set parameters 
@@ -344,7 +345,7 @@ toc()
 
 # make IRF's
 
-close("all")
+# close("all")
 
 makefigs = 1
 if makefigs == 1
