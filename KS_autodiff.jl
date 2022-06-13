@@ -116,7 +116,7 @@ JFD = x -> ForwardDiff.jacobian(Fstack, x);
 JJ = JFD(usex);
 
 # create q matrix which we will use later
-qqq = I(nw)
+qqq = Matrix(I(nw))
 qqq[:, 1] = ones(nw)
 (qqq1, rrr1) = qr(qqq)
 
@@ -127,7 +127,7 @@ Qy = cat(QW, I(nw), dims=(1, 2))
 
 
 
-gx2, hx2, gx, hx = solve(JJ, Qleft, Qx, Qy)
+@time gx2, hx2, gx, hx = solve(JJ, Qleft, Qx, Qy)
 
 
 # # make IRF's
