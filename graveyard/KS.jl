@@ -2,7 +2,7 @@ using Distributions
 using ForwardDiff
 include("ChebyshevStuff.jl")
 using ChebyshevStuff
-# using PyPlot
+using PyPlot
 
 
 # set parameters 
@@ -176,9 +176,6 @@ function findss(β::AbstractFloat,
         LPMKF = MW * KF * MW'
         # find eigenvalue closest to 1
         (D, V) = eig(LPMKF)
-        if count == 1
-            @show LPMKF
-        end
         if abs(D[1] - 1) > 2e-1 # that's the tolerance we are allowing
             warn("your eigenvalue is too far from 1, something is wrong")
         end
@@ -389,42 +386,42 @@ if makefigs == 1
     iss = δ * K
 
     figure()
-    ax = axes()
+    ax = PyPlot.axes()
     ax[:tick_params]("both", labelsize=18)
     plot(1:dur, (zIRFgdp / yss) * 100)
     xlabel("t")
     savefig("gdpdIRF.eps")
 
     figure()
-    ax = axes()
+    ax = PyPlot.axes()
     ax[:tick_params]("both", labelsize=18)
     plot(1:dur, (zIRFC / css) * 100)
     xlabel("t")
     savefig("aggCIRF.eps")
 
     figure()
-    ax = axes()
+    ax = PyPlot.axes()
     ax[:tick_params]("both", labelsize=18)
     plot(1:dur-1, (zIRFI / iss) * 100)
     xlabel("t")
     savefig("inventoriesIRF.eps")
 
     figure()
-    ax = axes()
+    ax = PyPlot.axes()
     ax[:tick_params]("both", labelsize=18)
     plot(1:dur, (zIRFz) * 100)
     xlabel("t")
     savefig("zIRF.eps")
 
     figure()
-    ax = axes()
+    ax = PyPlot.axes()
     ax[:tick_params]("both", labelsize=18)
     plot(1:dur, (zIRFrags / Rss) * 100)
     xlabel("t")
     savefig("ragsIRF.eps")
 
     figure()
-    ax = axes()
+    ax = PyPlot.axes()
     ax[:tick_params]("both", labelsize=18)
     plot(1:dur, (zIRFwags / Wss) * 100)
     xlabel("t")
