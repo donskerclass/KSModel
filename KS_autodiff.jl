@@ -129,81 +129,66 @@ Qy = cat(QW, I(nw), dims=(1, 2))
 
 @time gx2, hx2, gx, hx = solve(JJ, Qleft, Qx, Qy)
 
+# from now on we only plot things for cash grid points
+# with at least mindens = 1e-8 density in steady state
+mindens = 1e-8
+maxw = find(μ .> mindens)[end]
+wg = wgrid[1:maxw]
+dur = 50 #Periods to compute IRFs
 
-# # make IRF's
+# we will need this to make consumption shock
+dcdell = diagm((-1 / γ) * (ell .^ (-(1 / γ) - 1)) .* ((ell .^ (-1 / γ)) .<= wgrid))
+mpc = [1; (c[2:end] - c[1:end-1]) ./ (wgrid[2:end] - wgrid[1:end-1])]
 
-# close("all")
+# first, shock to aggregate component of income
+zshock = 0.01
+zIRFxc = zeros(2 * nw + 1, dur) #IRF to income shock, coefficient values
+zIRFxc[2*nw+1, 1] = zshock
+for t = 1:dur-1
+    zIRFxc[:, t+1] = hx * zIRFxc[:, t]
+end
+zIRFyc = gx * zIRFxc #y response
 
-# makepics = 0
-# if makepics == 1
-#     # from now on we only plot things for cash grid points
-#     # with at least mindens = 1e-8 density in steady state
-#     mindens = 1e-8
-#     maxw = find(μ .> mindens)[end]
-#     wg = wgrid[1:maxw]
-#     dur = 50 #Periods to compute IRFs
+#Shocks in terms of grid values
+zIRFxp = Qx'zIRFxc
+zIRFyp = Qy'zIRFyc
 
-#     # we will need this to make consumption shock
-#     dcdell = diagm((-1 / γ) * (ell .^ (-(1 / γ) - 1)) .* ((ell .^ (-1 / γ)) .<= wgrid))
-#     mpc = [1; (c[2:end] - c[1:end-1]) ./ (wgrid[2:end] - wgrid[1:end-1])]
+zIRFμ = zIRFyp[1:nw, :]
+zIRFell = zIRFyp[nw+1:2*nw, :]
+zIRFk = zIRFxp[2*nw+1, :]
+zIRFz = zIRFxp[2*nw+2, :]
+zIRFwags = dWdK * zIRFk + dWdZ * zIRFz
+zIRFrags = dRdK * zIRFk + dRdZ * zIRFz
+zIRFgdp = dYdK * zIRFk + dYdZ * zIRFz
+zIRFcfun = dcdell * zIRFell
+zIRFC = zIRFcfun' * (wweights .* μ) + zIRFμ' * (wweights .* c)
+zIRFI = zIRFk[2:end] - (1 - δ) * zIRFk[1:end-1]
 
-#     # first, shock to aggregate component of income
-#     zshock = 0.01
-#     zIRFxc = zeros(2 * nw + 1, dur) #IRF to income shock, coefficient values
-#     zIRFxc[2*nw+1, 1] = zshock
-#     for t = 1:dur-1
-#         zIRFxc[:, t+1] = hx * zIRFxc[:, t]
-#     end
-#     zIRFyc = gx * zIRFxc #y response
+yss = (K^α) * (L^(1 - α))
+css = μ' * (wweights .* c)
+iss = δ * K
 
-#     #Shocks in terms of grid values
-#     zIRFxp = Qx'zIRFxc
-#     zIRFyp = Qy'zIRFyc
+# make IRF's
 
-#     zIRFμ = zIRFyp[1:nw, :]
-#     zIRFell = zIRFyp[nw+1:2*nw, :]
-#     zIRFk = zIRFxp[2*nw+1, :]
-#     zIRFz = zIRFxp[2*nw+2, :]
-#     zIRFwags = dWdK * zIRFk + dWdZ * zIRFz
-#     zIRFrags = dRdK * zIRFk + dRdZ * zIRFz
-#     zIRFgdp = dYdK * zIRFk + dYdZ * zIRFz
-#     zIRFcfun = dcdell * zIRFell
-#     zIRFC = zIRFcfun' * (wweights .* μ) + zIRFμ' * (wweights .* c)
-#     zIRFI = zIRFk[2:end] - (1 - δ) * zIRFk[1:end-1]
+if !isempty(ARGS) # give any command line argument to plot
+    p1 = plot(1:dur, (zIRFgdp / yss) * 100, xlabel="t", title="gdpdIRF", legend=false)
+    savefig(p1, "plots/KS_autodiff/gdpdIRF.png")
 
-#     yss = (K^α) * (L^(1 - α))
-#     css = μ' * (wweights .* c)
-#     iss = δ * K
+    p2 = plot(1:dur, (zIRFC / css) * 100, xlabel="t", title="aggCIRF", legend=false)
+    savefig(p2, "plots/KS_autodiff/aggCIRF.png")
 
-#     figure()
-#     plot(1:dur, (zIRFgdp / yss) * 100)
-#     xlabel("t")
-#     #savefig("gdpdIRF.eps")
+    p3 = plot(1:dur-1, (zIRFI / iss) * 100, xlabel="t", title="inventoriesIRF", legend=false)
+    savefig(p3, "plots/KS_autodiff/inventoriesIRF.png")
 
-#     figure()
-#     plot(1:dur, (zIRFC / css) * 100)
-#     xlabel("t")
-#     #savefig("aggCIRF.eps")
+    p4 = plot(1:dur, (zIRFz) * 100, xlabel="t", title="zIRF", legend=false)
+    savefig(p4, "plots/KS_autodiff/zIRF.png")
 
-#     figure()
-#     plot(1:dur-1, (zIRFI / iss) * 100)
-#     xlabel("t")
-#     #savefig("inventoriesIRF.eps")
+    p5 = plot(1:dur, (zIRFrags / Rss) * 100, xlabel="t", title="ragsIRF", legend=false)
+    savefig(p5, "plots/KS_autodiff/ragsIRF.png")
 
-#     figure()
-#     plot(1:dur, (zIRFz) * 100)
-#     xlabel("t")
-#     #savefig("zIRF.eps")
-
-#     figure()
-#     plot(1:dur, (zIRFrags / Rss) * 100)
-#     xlabel("t")
-#     #savefig("ragsIRF.eps")
-
-#     figure()
-#     plot(1:dur, (zIRFwags / Wss) * 100)
-#     xlabel("t")
-#     #savefig("wagsIRF.eps")
+    p6 = plot(1:dur, (zIRFwags / Wss) * 100, xlabel="t", title="wagsIRF", legend=false)
+    savefig(p6, "plots/KS_autodiff/wagsIRF.png")
+end
 
 #     thingtoplot = zIRFμ[1:maxw, :]
 #     fig = figure(figsize=(8, 6))
@@ -302,4 +287,3 @@ Qy = cat(QW, I(nw), dims=(1, 2))
 #     ylabel("t")
 #     #savefig("cdist.eps")
 # end
-# toc()
