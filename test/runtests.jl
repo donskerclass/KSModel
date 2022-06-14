@@ -5,6 +5,7 @@ using Test
     include("KS.jl")
 end
 
-@testset "KS_autodiff" begin
-    include("KS_autodiff.jl")
-end
+# these take a long time to run
+# @testset "KS_autodiff" begin
+#     include("KS_autodiff.jl")
+# end

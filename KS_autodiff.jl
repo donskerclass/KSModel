@@ -132,7 +132,7 @@ Qy = cat(QW, I(nw), dims=(1, 2))
 # from now on we only plot things for cash grid points
 # with at least mindens = 1e-8 density in steady state
 mindens = 1e-8
-maxw = find(μ .> mindens)[end]
+maxw = findlast(μ .> mindens)
 wg = wgrid[1:maxw]
 dur = 50 #Periods to compute IRFs
 
