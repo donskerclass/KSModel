@@ -215,14 +215,19 @@ if !isempty(ARGS) # give any command line argument to plot
     thingtoplot = zIRFμ[1:maxw, :]
     xgrid = repeat(wg, 1, dur)
     ygrid = repeat((1:dur)', maxw, 1)
-    p7 = surface(xgrid, ygrid, thingtoplot, zaxis=(minimum(thingtoplot), maximum(thingtoplot)), lw=0.25, color=:jet, camera=(20, 60))
-    savefig(p7, "plots/KS/wealthIRFdist.png")
+    plot(xgrid, ygrid, thingtoplot, st=:surface, xlabel="w", ylabel="t")
+
+
+    # p7 = surface(xgrid, ygrid, thingtoplot, zaxis=(minimum(thingtoplot), maximum(thingtoplot)), lw=0.25, color=:jet, camera=(20, 60))
+    # savefig(p7, "plots/KS/wealthIRFdist.png")
 
     thingtoplot = zIRFcfun[1:maxw, :]
     xgrid = repeat(wg, 1, dur)
     ygrid = repeat((1:dur)', maxw, 1)
-    p8 = surface(xgrid, ygrid, thingtoplot, zaxis=(minimum(thingtoplot), maximum(thingtoplot)), lw=0.25, color=:jet)
-    savefig(p8, "plots/KS/cfunIRF.png")
+    plot(xgrid, ygrid, thingtoplot, st=:surface, xlabel="w", ylabel="t")
+
+    # p8 = surface(xgrid, ygrid, thingtoplot, zaxis=(minimum(thingtoplot), maximum(thingtoplot)), lw=0.25, color=:jet)
+    # savefig(p8, "plots/KS/cfunIRF.png")
 
     p9 = plot(wg, c[1:maxw], xlabel="w", title="cSSpolicy", legend=false)
     savefig(p9, "plots/KS/cSSpolicy.png")
@@ -262,6 +267,9 @@ if !isempty(ARGS) # give any command line argument to plot
     thingtoplot = qIRFc
     xgrid = repeat(cgrid, 1, dur)
     ygrid = repeat((1:dur)', nbins, 1)
-    p11 = surface(xgrid, ygrid, thingtoplot, xlabel="w", ylabel="t", zaxis=(minimum(thingtoplot), maximum(thingtoplot)), color=:jet)
-    savefig(p11, "plots/KS/cdist.png")
+    plot(xgrid, ygrid, thingtoplot, st=:surface, xlabel="w", ylabel="t")
+
+
+    # p11 = surface(xgrid, ygrid, thingtoplot, xlabel="w", ylabel="t", zaxis=(minimum(thingtoplot), maximum(thingtoplot)), color=:jet)
+    # savefig(p11, "plots/KS/cdist.png")
 end
