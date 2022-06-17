@@ -211,6 +211,14 @@ if !isempty(ARGS) # give any command line argument to plot
     p6 = plot(1:dur, (zIRFwags / Wss) * 100, xlabel="t", title="wagsIRF", legend=false)
     savefig(p6, "plots/KS/wagsIRF.png")
 
+    p9 = plot(wg, c[1:maxw], xlabel="w", title="cSSpolicy", legend=false)
+    savefig(p9, "plots/KS/cSSpolicy.png")
+
+    p10 = plot(wg, μ[1:maxw], xlabel="w", title="wealthSSdist", legend=false)
+    savefig(p10, "plots/KS/wealthSSdist.png")
+
+    pyplot()
+
     # 3D plots 
     thingtoplot = zIRFμ[1:maxw, :]
     xgrid = repeat(wg, 1, dur)
@@ -229,11 +237,7 @@ if !isempty(ARGS) # give any command line argument to plot
     # p8 = surface(xgrid, ygrid, thingtoplot, zaxis=(minimum(thingtoplot), maximum(thingtoplot)), lw=0.25, color=:jet)
     # savefig(p8, "plots/KS/cfunIRF.png")
 
-    p9 = plot(wg, c[1:maxw], xlabel="w", title="cSSpolicy", legend=false)
-    savefig(p9, "plots/KS/cSSpolicy.png")
 
-    p10 = plot(wg, μ[1:maxw], xlabel="w", title="wealthSSdist", legend=false)
-    savefig(p10, "plots/KS/wealthSSdist.png")
 
     indic = ones(nw, nw)
     indic = indic .* (broadcast(-, 1:nw, (1:nw)') .> 0)
