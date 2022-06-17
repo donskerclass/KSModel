@@ -172,41 +172,50 @@ iss = δ * K
 
 if !isempty(ARGS) # give any command line argument to plot
     p1 = plot(1:dur, (zIRFgdp / yss) * 100, xlabel="t", title="gdpdIRF", legend=false)
-    savefig(p1, "plots/KS_autodiff/gdpdIRF.png")
+    savefig(p1, "plots/KS/gdpdIRF.png")
 
     p2 = plot(1:dur, (zIRFC / css) * 100, xlabel="t", title="aggCIRF", legend=false)
-    savefig(p2, "plots/KS_autodiff/aggCIRF.png")
+    savefig(p2, "plots/KS/aggCIRF.png")
 
     p3 = plot(1:dur-1, (zIRFI / iss) * 100, xlabel="t", title="inventoriesIRF", legend=false)
-    savefig(p3, "plots/KS_autodiff/inventoriesIRF.png")
+    savefig(p3, "plots/KS/inventoriesIRF.png")
 
     p4 = plot(1:dur, (zIRFz) * 100, xlabel="t", title="zIRF", legend=false)
-    savefig(p4, "plots/KS_autodiff/zIRF.png")
+    savefig(p4, "plots/KS/zIRF.png")
 
     p5 = plot(1:dur, (zIRFrags / Rss) * 100, xlabel="t", title="ragsIRF", legend=false)
-    savefig(p5, "plots/KS_autodiff/ragsIRF.png")
+    savefig(p5, "plots/KS/ragsIRF.png")
 
     p6 = plot(1:dur, (zIRFwags / Wss) * 100, xlabel="t", title="wagsIRF", legend=false)
-    savefig(p6, "plots/KS_autodiff/wagsIRF.png")
+    savefig(p6, "plots/KS/wagsIRF.png")
+
+    p9 = plot(wg, c[1:maxw], xlabel="w", title="cSSpolicy", legend=false)
+    savefig(p9, "plots/KS/cSSpolicy.png")
+
+    p10 = plot(wg, μ[1:maxw], xlabel="w", title="wealthSSdist", legend=false)
+    savefig(p10, "plots/KS/wealthSSdist.png")
+
+    pyplot()
 
     # 3D plots 
     thingtoplot = zIRFμ[1:maxw, :]
     xgrid = repeat(wg, 1, dur)
     ygrid = repeat((1:dur)', maxw, 1)
-    p7 = surface(xgrid, ygrid, thingtoplot, zaxis=(minimum(thingtoplot), maximum(thingtoplot)), lw=0.25, color=:jet, camera=(20, 60))
-    savefig(p7, "plots/KS_autodiff/wealthIRFdist.png")
+    plot(xgrid, ygrid, thingtoplot, st=:surface, xlabel="w", ylabel="t")
+
+
+    # p7 = surface(xgrid, ygrid, thingtoplot, zaxis=(minimum(thingtoplot), maximum(thingtoplot)), lw=0.25, color=:jet, camera=(20, 60))
+    # savefig(p7, "plots/KS/wealthIRFdist.png")
 
     thingtoplot = zIRFcfun[1:maxw, :]
     xgrid = repeat(wg, 1, dur)
     ygrid = repeat((1:dur)', maxw, 1)
-    p8 = surface(xgrid, ygrid, thingtoplot, zaxis=(minimum(thingtoplot), maximum(thingtoplot)), lw=0.25, color=:jet)
-    savefig(p8, "plots/KS_autodiff/cfunIRF.png")
+    plot(xgrid, ygrid, thingtoplot, st=:surface, xlabel="w", ylabel="t")
 
-    p9 = plot(wg, c[1:maxw], xlabel="w", title="cSSpolicy", legend=false)
-    savefig(p9, "plots/KS_autodiff/cSSpolicy.png")
+    # p8 = surface(xgrid, ygrid, thingtoplot, zaxis=(minimum(thingtoplot), maximum(thingtoplot)), lw=0.25, color=:jet)
+    # savefig(p8, "plots/KS/cfunIRF.png")
 
-    p10 = plot(wg, μ[1:maxw], xlabel="w", title="wealthSSdist", legend=false)
-    savefig(p10, "plots/KS_autodiff/wealthSSdist.png")
+
 
     indic = ones(nw, nw)
     indic = indic .* (broadcast(-, 1:nw, (1:nw)') .> 0)
@@ -240,6 +249,9 @@ if !isempty(ARGS) # give any command line argument to plot
     thingtoplot = qIRFc
     xgrid = repeat(cgrid, 1, dur)
     ygrid = repeat((1:dur)', nbins, 1)
-    p11 = surface(xgrid, ygrid, thingtoplot, xlabel="w", ylabel="t", zaxis=(minimum(thingtoplot), maximum(thingtoplot)), color=:jet)
-    savefig(p11, "plots/KS_autodiff/cdist.png")
+    plot(xgrid, ygrid, thingtoplot, st=:surface, xlabel="w", ylabel="t")
+
+
+    # p11 = surface(xgrid, ygrid, thingtoplot, xlabel="w", ylabel="t", zaxis=(minimum(thingtoplot), maximum(thingtoplot)), color=:jet)
+    # savefig(p11, "plots/KS/cdist.png")
 end
