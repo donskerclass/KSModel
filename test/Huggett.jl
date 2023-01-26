@@ -18,4 +18,6 @@ include("../Huggett.jl")
 @test_broken hx2[12, 100] ≈ 0.6669025418833682
 @test_broken hx[92, 83] ≈ -0.008244972017033574
 
+# impulse responses
 @test_broken agIRFc[85, 7] ≈ 0.4831784976013633
+@test_broken agIRFyc[121, 5] ≈ -0.00312263889141892
