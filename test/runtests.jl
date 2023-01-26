@@ -3,6 +3,7 @@ using Test
 
 @testset "KS" begin
     include("KS.jl")
+    include("Huggett.jl")
 end
 
 # these take a long time to run

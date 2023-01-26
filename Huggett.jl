@@ -136,112 +136,114 @@ agIRFag  = agIRFxp[nw+1,:]
 # make consumption shock:
 agIRFc = dcdxss*[agIRFell;agIRFr';agIRFag'];
 
-pyplot()
+if !isempty(ARGS) # give any command line argument to plot
+    pyplot()
 
-thingtoplot = agIRFm[1:maxw,:];
-xgrid = repeat(wg,1,dur);
-ygrid = repeat((1:dur)',maxw,1);
-plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = "w", ylabel = "t", zlabel = "m_t(w)", title = "cash dist. response to aggregate income shock")
+    thingtoplot = agIRFm[1:maxw,:];
+    xgrid = repeat(wg,1,dur);
+    ygrid = repeat((1:dur)',maxw,1);
+    plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = "w", ylabel = "t", zlabel = "m_t(w)", title = "cash dist. response to aggregate income shock")
 
-thingtoplot = agIRFc[1:maxw,:];
-xgrid = repeat(wg,1,dur);
-ygrid = repeat((1:dur)',maxw,1);
-plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = "w", ylabel = "t", zlabel = "c_t(w)", title = "consumption response to aggregate income shock")
+    thingtoplot = agIRFc[1:maxw,:];
+    xgrid = repeat(wg,1,dur);
+    ygrid = repeat((1:dur)',maxw,1);
+    plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = "w", ylabel = "t", zlabel = "c_t(w)", title = "consumption response to aggregate income shock")
 
-plot(1:dur,agIRFr, xlabel = "t", ylabel = "R_t", title="interest rate response to aggregate income shock", legend = false)
+    plot(1:dur,agIRFr, xlabel = "t", ylabel = "R_t", title="interest rate response to aggregate income shock", legend = false)
 
-plot(1:dur,agIRFag, xlabel = "t", ylabel = "ag_t", title="aggregate income shock", legend = false)
+    plot(1:dur,agIRFag, xlabel = "t", ylabel = "ag_t", title="aggregate income shock", legend = false)
 
 
-# next, risk shock
-lsshock = 1.0
-lsIRFxc = zeros(nw+1,dur) #IRF to lsig shock, coefficient values
-lsIRFxc[nw+1,1] =lsshock
-for t=1:dur-1
-    lsIRFxc[:,t+1] = hx*lsIRFxc[:,t]
+    # next, risk shock
+    lsshock = 1.0
+    lsIRFxc = zeros(nw+1,dur) #IRF to lsig shock, coefficient values
+    lsIRFxc[nw+1,1] =lsshock
+    for t=1:dur-1
+        lsIRFxc[:,t+1] = hx*lsIRFxc[:,t]
+    end
+    lsIRFyc = gx*lsIRFxc #y response
+
+    #Shocks in terms of grid values
+    lsIRFxp = C2Vx*Qx'lsIRFxc
+    lsIRFyp = C2Vy*Qy'lsIRFyc
+
+    lsIRFell = lsIRFyp[1:nw,:]
+    lsIRFr   = lsIRFyp[nw+1,:]
+    lsIRFm   = lsIRFxp[1:nw,:]
+    lsIRFag  = lsIRFxp[nw+1,:] # this should be 0
+    lsIRFls  = lsIRFxp[nw+2,:] # this should be 0
+    # make consumption shock:
+    lsIRFc = dcdxss*[lsIRFell;lsIRFr';lsIRFag'];
+
+    thingtoplot = lsIRFm[1:maxw,:];
+    xgrid = repeat(wg,1,dur);
+    ygrid = repeat((1:dur)',maxw,1);
+    plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = "w", ylabel = "t", zlabel = "m_t(w)", title = "cash dist. response to risk shock")
+
+    thingtoplot = lsIRFc[1:maxw,:];
+    xgrid = repeat(wg,1,dur);
+    ygrid = repeat((1:dur)',maxw,1);
+    plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = "w", ylabel = "t", zlabel = "c_t(w)", title = "consumption response to risk shock")
+
+    plot(1:dur,lsIRFr, xlabel = "t", ylabel = "R_t", title = "interest rate response to risk shock", legend = false)
+
+    plot(1:dur,lsIRFls,xlabel="t",ylabel="lsig_t",title="risk shock")
+
+    # still to do: plots of consumption distribution and other auxiliary variables
+    # in particular g, after sig shock
+
+    # mean consumption
+    meanc(c,m) = sum(m.*wweights.*c)
+    varc(c,m)  = sum(m.*wweights.*((c.-meanc(c,m)).^2))
+    meanw(m)   = sum(m.*wweights.*wgrid) # should be 0
+    varw(m)    = sum(m.*wweights.*((wgrid.-meanw(m)).^2))
+
+    mcstack(xx) = meanc(xx[1:nw],xx[nw+1:2*nw])
+    dmcdx   = xx->ForwardDiff.gradient(mcstack,xx)
+    usexx   = [c;m]
+    dmcdxss = dmcdx(usexx)
+    agIRFmc = dmcdxss'*[agIRFc;agIRFm]
+    lsIRFmc = dmcdxss'*[lsIRFc;lsIRFm]
+
+    vcstack(xx) = varc(xx[1:nw],xx[nw+1:2*nw])
+    dvcdx   = xx->ForwardDiff.gradient(vcstack,xx)
+    dvcdxss = dvcdx(usexx)
+    agIRFvc = dvcdxss'*[agIRFc;agIRFm]
+    lsIRFvc = dvcdxss'*[lsIRFc;lsIRFm]
+
+    dmwdm   = m->ForwardDiff.gradient(meanw,m)
+    dmwdmss = dmwdm(m)
+    agIRFmw = dmwdmss'*agIRFm
+    lsIRFmw = dmwdmss'*lsIRFm
+
+    dvwdm   = m->ForwardDiff.gradient(varw,m)
+    dvwdmss = dvwdm(m)
+    agIRFvw = dvwdmss'*agIRFm
+    lsIRFvw = dvwdmss'*lsIRFm
+
+    # #close("all")
+
+    # fig=figure()
+    # plot(1:dur,agIRFmc',1:dur,10*agIRFvc',1:dur,agIRFmw',1:dur,10*agIRFvw')
+    # legend(("mean c", "10*var c", "mean cash", "10*var cash"))
+    # xlabel("t")
+    # title("shock to aggregate income")
+
+    # fig=figure()
+    # plot(1:dur,lsIRFmc',1:dur,10*lsIRFvc',1:dur,lsIRFmw',1:dur,10*lsIRFvw')
+    # legend(("mean c", "10*var c", "mean cash", "10*var cash"))
+    # xlabel("t")
+    # title("shock to log variance of idiosyncratic income")
+
+    # fig=figure()
+    # subplot(121)
+    # plot(wgrid,c)
+    # xlabel("Cash on hand")
+    # ylabel("Consumption")
+    # title("Steady State Policy Function")
+    # subplot(122)
+    # plot(wgrid,m)
+    # xlabel("Cash on hand")
+    # ylabel("Density")
+    # title("Steady State Wealth Distribution")
 end
-lsIRFyc = gx*lsIRFxc #y response
-
-#Shocks in terms of grid values
-lsIRFxp = C2Vx*Qx'lsIRFxc
-lsIRFyp = C2Vy*Qy'lsIRFyc
-
-lsIRFell = lsIRFyp[1:nw,:]
-lsIRFr   = lsIRFyp[nw+1,:]
-lsIRFm   = lsIRFxp[1:nw,:]
-lsIRFag  = lsIRFxp[nw+1,:] # this should be 0
-lsIRFls  = lsIRFxp[nw+2,:] # this should be 0
-# make consumption shock:
-lsIRFc = dcdxss*[lsIRFell;lsIRFr';lsIRFag'];
-
-thingtoplot = lsIRFm[1:maxw,:];
-xgrid = repeat(wg,1,dur);
-ygrid = repeat((1:dur)',maxw,1);
-plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = "w", ylabel = "t", zlabel = "m_t(w)", title = "cash dist. response to risk shock")
-
-thingtoplot = lsIRFc[1:maxw,:];
-xgrid = repeat(wg,1,dur);
-ygrid = repeat((1:dur)',maxw,1);
-plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = "w", ylabel = "t", zlabel = "c_t(w)", title = "consumption response to risk shock")
-
-plot(1:dur,lsIRFr, xlabel = "t", ylabel = "R_t", title = "interest rate response to risk shock", legend = false)
-
-plot(1:dur,lsIRFls,xlabel="t",ylabel="lsig_t",title="risk shock")
-
-# still to do: plots of consumption distribution and other auxiliary variables
-# in particular g, after sig shock
-
-# mean consumption
-meanc(c,m) = sum(m.*wweights.*c)
-varc(c,m)  = sum(m.*wweights.*((c.-meanc(c,m)).^2))
-meanw(m)   = sum(m.*wweights.*wgrid) # should be 0
-varw(m)    = sum(m.*wweights.*((wgrid.-meanw(m)).^2))
-
-mcstack(xx) = meanc(xx[1:nw],xx[nw+1:2*nw])
-dmcdx   = xx->ForwardDiff.gradient(mcstack,xx)
-usexx   = [c;m]
-dmcdxss = dmcdx(usexx)
-agIRFmc = dmcdxss'*[agIRFc;agIRFm]
-lsIRFmc = dmcdxss'*[lsIRFc;lsIRFm]
-
-vcstack(xx) = varc(xx[1:nw],xx[nw+1:2*nw])
-dvcdx   = xx->ForwardDiff.gradient(vcstack,xx)
-dvcdxss = dvcdx(usexx)
-agIRFvc = dvcdxss'*[agIRFc;agIRFm]
-lsIRFvc = dvcdxss'*[lsIRFc;lsIRFm]
-
-dmwdm   = m->ForwardDiff.gradient(meanw,m)
-dmwdmss = dmwdm(m)
-agIRFmw = dmwdmss'*agIRFm
-lsIRFmw = dmwdmss'*lsIRFm
-
-dvwdm   = m->ForwardDiff.gradient(varw,m)
-dvwdmss = dvwdm(m)
-agIRFvw = dvwdmss'*agIRFm
-lsIRFvw = dvwdmss'*lsIRFm
-
-# #close("all")
-
-# fig=figure()
-# plot(1:dur,agIRFmc',1:dur,10*agIRFvc',1:dur,agIRFmw',1:dur,10*agIRFvw')
-# legend(("mean c", "10*var c", "mean cash", "10*var cash"))
-# xlabel("t")
-# title("shock to aggregate income")
-
-# fig=figure()
-# plot(1:dur,lsIRFmc',1:dur,10*lsIRFvc',1:dur,lsIRFmw',1:dur,10*lsIRFvw')
-# legend(("mean c", "10*var c", "mean cash", "10*var cash"))
-# xlabel("t")
-# title("shock to log variance of idiosyncratic income")
-
-# fig=figure()
-# subplot(121)
-# plot(wgrid,c)
-# xlabel("Cash on hand")
-# ylabel("Consumption")
-# title("Steady State Policy Function")
-# subplot(122)
-# plot(wgrid,m)
-# xlabel("Cash on hand")
-# ylabel("Density")
-# title("Steady State Wealth Distribution")
