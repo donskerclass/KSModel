@@ -102,176 +102,123 @@ gx2, hx2, gx, hx =  huggett_solve(Jac0, funops, FF, vars, outinds, Mmats,
 # close("all")
 
 
-# # from now on we only plot things for cash grid points
-# # with at least mindens = 1e-8 density in steady state
-# mindens = 1e-8
-# maxw = find(m.>mindens)[end]
-# wg = wgrid[1:maxw]
-# dur =10 #Periods to compute IRFs
+# from now on we only plot things for cash grid points
+# with at least mindens = 1e-8 density in steady state
+mindens = 1e-8
+maxw = findlast(m .> mindens)
+wg = wgrid[1:maxw]
+dur = 10 #Periods to compute IRFs
 
-# # we will need this to make consumption shock
-# cfstack(xx) = cfunc(xx[1:nw],xx[nw+1],xx[nw+2]);
-# dcdx    = xx->ForwardDiff.jacobian(cfstack,xx);
-# usexx=[ell;R;agss];
-# dcdxss  = dcdx(usexx);
+# we will need this to make consumption shock
+cfstack(xx) = cfunc(xx[1:nw],xx[nw+1],xx[nw+2]);
+dcdx    = xx->ForwardDiff.jacobian(cfstack,xx);
+usexx=[ell;R;agss];
+dcdxss  = dcdx(usexx);
 
-# # first, shock to aggregate component of income
-# agshock = 1.0
-# agIRFxc = zeros(nw+1,dur) #IRF to income shock, coefficient values
-# agIRFxc[nw,1] =agshock
-# for t=1:dur-1
-#     agIRFxc[:,t+1] = hx*agIRFxc[:,t]
-# end
-# agIRFyc = gx*agIRFxc #y response
+# first, shock to aggregate component of income
+agshock = 1.0
+agIRFxc = zeros(nw+1,dur) #IRF to income shock, coefficient values
+agIRFxc[nw,1] =agshock
+for t=1:dur-1
+    agIRFxc[:,t+1] = hx*agIRFxc[:,t]
+end
+agIRFyc = gx*agIRFxc #y response
 
-# #Shocks in terms of grid values
-# agIRFxp = C2Vx*Qx'agIRFxc
-# agIRFyp = C2Vy*Qy'agIRFyc
+#Shocks in terms of grid values
+agIRFxp = C2Vx*Qx'agIRFxc
+agIRFyp = C2Vy*Qy'agIRFyc
 
-# agIRFell = agIRFyp[1:nw,:]
-# agIRFr   = agIRFyp[nw+1,:]
-# agIRFm   = agIRFxp[1:nw,:]
-# agIRFag  = agIRFxp[nw+1,:]
-# # sig shock is obviously zero so we omit it
-# # make consumption shock:
-# agIRFc = dcdxss*[agIRFell;agIRFr';agIRFag'];
+agIRFell = agIRFyp[1:nw,:]
+agIRFr   = agIRFyp[nw+1,:]
+agIRFm   = agIRFxp[1:nw,:]
+agIRFag  = agIRFxp[nw+1,:]
+# sig shock is obviously zero so we omit it
+# make consumption shock:
+agIRFc = dcdxss*[agIRFell;agIRFr';agIRFag'];
 
-# thingtoplot = agIRFm[1:maxw,:];
-# fig = figure(figsize=(8,6))
-# #ax = fig[:gca](projection="3d")
-# ax = Axes3D(fig)
-# ax[:set_zlim](minimum(thingtoplot), maximum(thingtoplot));
-# xgrid = repmat(wg,1,dur);
-# ygrid = repmat((1:dur)',maxw,1);
-# ax[:plot_surface](xgrid, ygrid, thingtoplot, cmap=ColorMap("jet"),
-#                     edgecolors="k",linewidth=0.25)
-# xlabel("w")
-# ylabel("t")
-# zlabel("m_t(w)")
-# title("cash distribution response to aggregate income shock")
+pyplot()
 
+thingtoplot = agIRFm[1:maxw,:];
+xgrid = repeat(wg,1,dur);
+ygrid = repeat((1:dur)',maxw,1);
+plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = "w", ylabel = "t", zlabel = "m_t(w)", title = "cash dist. response to aggregate income shock")
 
-# thingtoplot = agIRFc[1:maxw,:];
-# fig = figure(figsize=(8,6))
-# #ax = fig[:gca](projection="3d")
-# ax = Axes3D(fig)
-# ax[:set_zlim](minimum(thingtoplot), maximum(thingtoplot));
-# xgrid = repmat(wg,1,dur);
-# ygrid = repmat((1:dur)',maxw,1);
-# ax[:plot_surface](xgrid, ygrid, thingtoplot, cmap=ColorMap("jet"),
-#                     edgecolors="k",linewidth=0.25)
-# xlabel("w")
-# ylabel("t")
-# zlabel("c_t(w)")
-# title("consumption response to aggregate income shock")
+thingtoplot = agIRFc[1:maxw,:];
+xgrid = repeat(wg,1,dur);
+ygrid = repeat((1:dur)',maxw,1);
+plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = "w", ylabel = "t", zlabel = "c_t(w)", title = "consumption response to aggregate income shock")
 
-# figr=figure()
-# plot(1:dur,agIRFr)
-# xlabel("t")
-# ylabel("R_t")
-# title("interest rate response to aggregate income shock")
+plot(1:dur,agIRFr, xlabel = "t", ylabel = "R_t", title="interest rate response to aggregate income shock", legend = false)
 
-# # mu irf
-# figr=figure()
-# plot(1:dur,agIRFag)
-# xlabel("t")
-# ylabel("ag_t")
-# title("aggregate income shock")
-
-# # next, risk shock
-# lsshock = 1.0
-# lsIRFxc = zeros(nw+1,dur) #IRF to lsig shock, coefficient values
-# lsIRFxc[nw+1,1] =lsshock
-# for t=1:dur-1
-#     lsIRFxc[:,t+1] = hx*lsIRFxc[:,t]
-# end
-# lsIRFyc = gx*lsIRFxc #y response
-
-# #Shocks in terms of grid values
-# lsIRFxp = C2Vx*Qx'lsIRFxc
-# lsIRFyp = C2Vy*Qy'lsIRFyc
-
-# lsIRFell = lsIRFyp[1:nw,:]
-# lsIRFr   = lsIRFyp[nw+1,:]
-# lsIRFm   = lsIRFxp[1:nw,:]
-# lsIRFag  = lsIRFxp[nw+1,:] # this should be 0
-# lsIRFls  = lsIRFxp[nw+2,:] # this should be 0
-# # make consumption shock:
-# lsIRFc = dcdxss*[lsIRFell;lsIRFr';lsIRFag'];
-
-# thingtoplot = lsIRFm[1:maxw,:];
-# fig = figure(figsize=(8,6))
-# #ax = fig[:gca](projection="3d")
-# ax = Axes3D(fig)
-# ax[:set_zlim](minimum(thingtoplot), maximum(thingtoplot));
-# xgrid = repmat(wg,1,dur);
-# ygrid = repmat((1:dur)',maxw,1);
-# ax[:plot_surface](xgrid, ygrid, thingtoplot, cmap=ColorMap("jet"),
-#                     edgecolors="k",linewidth=0.25)
-# xlabel("w")
-# ylabel("t")
-# zlabel("m_t(w)")
-# title("cash distribution response to risk shock")
+plot(1:dur,agIRFag, xlabel = "t", ylabel = "ag_t", title="aggregate income shock", legend = false)
 
 
-# thingtoplot = lsIRFc[1:maxw,:];
-# fig = figure(figsize=(8,6))
-# #ax = fig[:gca](projection="3d")
-# ax = Axes3D(fig)
-# ax[:set_zlim](minimum(thingtoplot), maximum(thingtoplot));
-# xgrid = repmat(wg,1,dur);
-# ygrid = repmat((1:dur)',maxw,1);
-# ax[:plot_surface](xgrid, ygrid, thingtoplot, cmap=ColorMap("jet"),
-#                     edgecolors="k",linewidth=0.25)
-# xlabel("w")
-# ylabel("t")
-# zlabel("c_t(w)")
-# title("consumption response to risk shock")
+# next, risk shock
+lsshock = 1.0
+lsIRFxc = zeros(nw+1,dur) #IRF to lsig shock, coefficient values
+lsIRFxc[nw+1,1] =lsshock
+for t=1:dur-1
+    lsIRFxc[:,t+1] = hx*lsIRFxc[:,t]
+end
+lsIRFyc = gx*lsIRFxc #y response
 
-# figr=figure()
-# plot(1:dur,lsIRFr)
-# xlabel("t")
-# ylabel("R_t")
-# title("interest rate response to risk shock")
+#Shocks in terms of grid values
+lsIRFxp = C2Vx*Qx'lsIRFxc
+lsIRFyp = C2Vy*Qy'lsIRFyc
 
-# # mu irf
-# figr=figure()
-# plot(1:dur,lsIRFls)
-# xlabel("t")
-# ylabel("lsig_t")
-# title("risk shock")
+lsIRFell = lsIRFyp[1:nw,:]
+lsIRFr   = lsIRFyp[nw+1,:]
+lsIRFm   = lsIRFxp[1:nw,:]
+lsIRFag  = lsIRFxp[nw+1,:] # this should be 0
+lsIRFls  = lsIRFxp[nw+2,:] # this should be 0
+# make consumption shock:
+lsIRFc = dcdxss*[lsIRFell;lsIRFr';lsIRFag'];
 
-# # still to do: plots of consumption distribution and other auxiliary variables
-# # in particular g, after sig shock
+thingtoplot = lsIRFm[1:maxw,:];
+xgrid = repeat(wg,1,dur);
+ygrid = repeat((1:dur)',maxw,1);
+plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = "w", ylabel = "t", zlabel = "m_t(w)", title = "cash dist. response to risk shock")
 
-# # mean consumption
-# meanc(c,m) = sum(m.*wweights.*c)
-# varc(c,m)  = sum(m.*wweights.*((c-meanc(c,m)).^2))
-# meanw(m)   = sum(m.*wweights.*wgrid) # should be 0
-# varw(m)    = sum(m.*wweights.*((wgrid-meanw(m)).^2))
+thingtoplot = lsIRFc[1:maxw,:];
+xgrid = repeat(wg,1,dur);
+ygrid = repeat((1:dur)',maxw,1);
+plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = "w", ylabel = "t", zlabel = "c_t(w)", title = "consumption response to risk shock")
 
-# mcstack(xx) = meanc(xx[1:nw],xx[nw+1:2*nw])
-# dmcdx   = xx->ForwardDiff.gradient(mcstack,xx)
-# usexx   = [c;m]
-# dmcdxss = dmcdx(usexx)
-# agIRFmc = dmcdxss'*[agIRFc;agIRFm]
-# lsIRFmc = dmcdxss'*[lsIRFc;lsIRFm]
+plot(1:dur,lsIRFr, xlabel = "t", ylabel = "R_t", title = "interest rate response to risk shock", legend = false)
 
-# vcstack(xx) = varc(xx[1:nw],xx[nw+1:2*nw])
-# dvcdx   = xx->ForwardDiff.gradient(vcstack,xx)
-# dvcdxss = dvcdx(usexx)
-# agIRFvc = dvcdxss'*[agIRFc;agIRFm]
-# lsIRFvc = dvcdxss'*[lsIRFc;lsIRFm]
+plot(1:dur,lsIRFls,xlabel="t",ylabel="lsig_t",title="risk shock")
 
-# dmwdm   = m->ForwardDiff.gradient(meanw,m)
-# dmwdmss = dmwdm(m)
-# agIRFmw = dmwdmss'*agIRFm
-# lsIRFmw = dmwdmss'*lsIRFm
+# still to do: plots of consumption distribution and other auxiliary variables
+# in particular g, after sig shock
 
-# dvwdm   = m->ForwardDiff.gradient(varw,m)
-# dvwdmss = dvwdm(m)
-# agIRFvw = dvwdmss'*agIRFm
-# lsIRFvw = dvwdmss'*lsIRFm
+# mean consumption
+meanc(c,m) = sum(m.*wweights.*c)
+varc(c,m)  = sum(m.*wweights.*((c.-meanc(c,m)).^2))
+meanw(m)   = sum(m.*wweights.*wgrid) # should be 0
+varw(m)    = sum(m.*wweights.*((wgrid.-meanw(m)).^2))
+
+mcstack(xx) = meanc(xx[1:nw],xx[nw+1:2*nw])
+dmcdx   = xx->ForwardDiff.gradient(mcstack,xx)
+usexx   = [c;m]
+dmcdxss = dmcdx(usexx)
+agIRFmc = dmcdxss'*[agIRFc;agIRFm]
+lsIRFmc = dmcdxss'*[lsIRFc;lsIRFm]
+
+vcstack(xx) = varc(xx[1:nw],xx[nw+1:2*nw])
+dvcdx   = xx->ForwardDiff.gradient(vcstack,xx)
+dvcdxss = dvcdx(usexx)
+agIRFvc = dvcdxss'*[agIRFc;agIRFm]
+lsIRFvc = dvcdxss'*[lsIRFc;lsIRFm]
+
+dmwdm   = m->ForwardDiff.gradient(meanw,m)
+dmwdmss = dmwdm(m)
+agIRFmw = dmwdmss'*agIRFm
+lsIRFmw = dmwdmss'*lsIRFm
+
+dvwdm   = m->ForwardDiff.gradient(varw,m)
+dvwdmss = dvwdm(m)
+agIRFvw = dvwdmss'*agIRFm
+lsIRFvw = dvwdmss'*lsIRFm
 
 # #close("all")
 
