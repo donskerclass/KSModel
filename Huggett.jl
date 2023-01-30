@@ -1,4 +1,5 @@
 using KSModel, Parameters, LinearAlgebra, Plots, ForwardDiff
+using LaTeXStrings
 huggett_params = huggett_model()
 wgrid, wweights, scheb, sgrid, sweights, MW, MWinv = grids(huggett_params)
 @unpack rhoag, rhosig, nw, ns, sigs, shi, slo, alo, bbeta, zhi, zlo, smoother, gama, agss = huggett_params
@@ -142,16 +143,16 @@ if !isempty(ARGS) # give any command line argument to plot
     thingtoplot = agIRFm[1:maxw,:];
     xgrid = repeat(wg,1,dur);
     ygrid = repeat((1:dur)',maxw,1);
-    plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = "w", ylabel = "t", zlabel = "m_t(w)", title = "cash dist. response to aggregate income shock")
+    plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = L"w", ylabel = L"t", zlabel = L"m_t(w)", title = "cash dist. response to aggregate income shock")
 
     thingtoplot = agIRFc[1:maxw,:];
     xgrid = repeat(wg,1,dur);
     ygrid = repeat((1:dur)',maxw,1);
-    plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = "w", ylabel = "t", zlabel = "c_t(w)", title = "consumption response to aggregate income shock")
+    plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = L"w", ylabel = L"t", zlabel = L"c_t(w)", title = "consumption response to aggregate income shock")
 
-    plot(1:dur,agIRFr, xlabel = "t", ylabel = "R_t", title="interest rate response to aggregate income shock", legend = false)
+    plot(1:dur,agIRFr, xlabel = L"t", ylabel = L"R_t", title="interest rate response to aggregate income shock", legend = false)
 
-    plot(1:dur,agIRFag, xlabel = "t", ylabel = "ag_t", title="aggregate income shock", legend = false)
+    plot(1:dur,agIRFag, xlabel = L"t", ylabel = L"ag_t", title="aggregate income shock", legend = false)
 
 
     # next, risk shock
@@ -178,16 +179,16 @@ if !isempty(ARGS) # give any command line argument to plot
     thingtoplot = lsIRFm[1:maxw,:];
     xgrid = repeat(wg,1,dur);
     ygrid = repeat((1:dur)',maxw,1);
-    plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = "w", ylabel = "t", zlabel = "m_t(w)", title = "cash dist. response to risk shock")
+    plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = L"w", ylabel = L"t", zlabel = L"m_t(w)", title = "cash dist. response to risk shock")
 
     thingtoplot = lsIRFc[1:maxw,:];
     xgrid = repeat(wg,1,dur);
     ygrid = repeat((1:dur)',maxw,1);
     plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = "w", ylabel = "t", zlabel = "c_t(w)", title = "consumption response to risk shock")
 
-    plot(1:dur,lsIRFr, xlabel = "t", ylabel = "R_t", title = "interest rate response to risk shock", legend = false)
+    plot(1:dur,lsIRFr, xlabel = L"t", ylabel = L"R_t", title = "interest rate response to risk shock", legend = false)
 
-    plot(1:dur,lsIRFls,xlabel="t",ylabel="lsig_t",title="risk shock")
+    plot(1:dur,lsIRFls,xlabel=L"t",ylabel=L"lsig_t",title="risk shock")
 
     # still to do: plots of consumption distribution and other auxiliary variables
     # in particular g, after sig shock
