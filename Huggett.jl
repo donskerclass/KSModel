@@ -137,23 +137,25 @@ agIRFag  = agIRFxp[nw+1,:]
 # make consumption shock:
 agIRFc = dcdxss*[agIRFell;agIRFr';agIRFag'];
 
-if !isempty(ARGS) # give any command line argument to plot
+#if !isempty(ARGS) # give any command line argument to plot
     pyplot()
 
     thingtoplot = agIRFm[1:maxw,:];
     xgrid = repeat(wg,1,dur);
     ygrid = repeat((1:dur)',maxw,1);
-    plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = L"w", ylabel = L"t", zlabel = L"m_t(w)", title = "cash dist. response to aggregate income shock")
+    p1 = plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = L"w", ylabel = L"t", zlabel = L"m_t(w)", title = "cash dist. response to aggregate income shock",legend=false)
+    savefig(p1, "plots/Huggett/HuggettagIRFm.png")
 
     thingtoplot = agIRFc[1:maxw,:];
     xgrid = repeat(wg,1,dur);
     ygrid = repeat((1:dur)',maxw,1);
-    plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = L"w", ylabel = L"t", zlabel = L"c_t(w)", title = "consumption response to aggregate income shock")
-
-    plot(1:dur,agIRFr, xlabel = L"t", ylabel = L"R_t", title="interest rate response to aggregate income shock", legend = false)
-
-    plot(1:dur,agIRFag, xlabel = L"t", ylabel = L"ag_t", title="aggregate income shock", legend = false)
-
+    p2 = plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = L"w", ylabel = L"t", zlabel = L"c_t(w)", 
+        title = "consumption response to aggregate income shock",legend=false,camera=(130, 40))
+    savefig(p2, "plots/Huggett/HuggettagIRFc.png")
+    p3 = plot(1:dur,agIRFr, xlabel = L"t", ylabel = L"R_t", title="interest rate response to aggregate income shock", legend = false)
+    savefig(p3, "plots/Huggett/HuggettagIRFr.png")
+    p4 = plot(1:dur,agIRFag, xlabel = L"t", ylabel = L"ag_t", title="aggregate income shock", legend = false)
+    savefig(p4, "plots/Huggett/HuggettagIRFag.png")
 
     # next, risk shock
     lsshock = 1.0
@@ -179,16 +181,20 @@ if !isempty(ARGS) # give any command line argument to plot
     thingtoplot = lsIRFm[1:maxw,:];
     xgrid = repeat(wg,1,dur);
     ygrid = repeat((1:dur)',maxw,1);
-    plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = L"w", ylabel = L"t", zlabel = L"m_t(w)", title = "cash dist. response to risk shock")
-
+    p5 = plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = L"w", ylabel = L"t", zlabel = L"m_t(w)", 
+        title = "cash dist. response to risk shock",legend=false)
+    savefig(p5, "plots/Huggett/HuggettlsIRFm.png")
     thingtoplot = lsIRFc[1:maxw,:];
     xgrid = repeat(wg,1,dur);
     ygrid = repeat((1:dur)',maxw,1);
-    plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = "w", ylabel = "t", zlabel = "c_t(w)", title = "consumption response to risk shock")
+    p6 = plot(xgrid, ygrid, thingtoplot, st = :surface, xlabel = "w", ylabel = "t", zlabel = "c_t(w)", 
+        title = "consumption response to risk shock",legend=false,camera=(150, 40))
+    savefig(p6, "plots/Huggett/HuggettlsIRFc.png")
+    p7 = plot(1:dur,lsIRFr, xlabel = L"t", ylabel = L"R_t", title = "interest rate response to risk shock", legend = false)
+    savefig(p7, "plots/Huggett/HuggettlsIRFr.png")
 
-    plot(1:dur,lsIRFr, xlabel = L"t", ylabel = L"R_t", title = "interest rate response to risk shock", legend = false)
-
-    plot(1:dur,lsIRFls,xlabel=L"t",ylabel=L"lsig_t",title="risk shock")
+    p8 = plot(1:dur,lsIRFls,xlabel=L"t",ylabel=L"lsig_t",title="risk shock",legend=false)
+    savefig(p8, "plots/Huggett/HuggettlsIRFls.png")
 
     # still to do: plots of consumption distribution and other auxiliary variables
     # in particular g, after sig shock
@@ -222,29 +228,20 @@ if !isempty(ARGS) # give any command line argument to plot
     agIRFvw = dvwdmss'*agIRFm
     lsIRFvw = dvwdmss'*lsIRFm
 
-    # #close("all")
+    ssplot1 = plot(wgrid,c,xlabel="Cash on Hand",ylabel="Consumption",legend=false)
+    ssplot2 = plot(wgrid,m,xlabel="Cash on Hand",ylabel="Density",legend=false)
+    ssplot  = plot(ssplot1,ssplot2,layout=(1,2),plot_title="Steady State Policy and Wealth Distribution")
+    savefig(ssplot, "plots/Huggett/steadystate.png")
 
-    # fig=figure()
-    # plot(1:dur,agIRFmc',1:dur,10*agIRFvc',1:dur,agIRFmw',1:dur,10*agIRFvw')
-    # legend(("mean c", "10*var c", "mean cash", "10*var cash"))
-    # xlabel("t")
-    # title("shock to aggregate income")
 
-    # fig=figure()
-    # plot(1:dur,lsIRFmc',1:dur,10*lsIRFvc',1:dur,lsIRFmw',1:dur,10*lsIRFvw')
-    # legend(("mean c", "10*var c", "mean cash", "10*var cash"))
-    # xlabel("t")
-    # title("shock to log variance of idiosyncratic income")
+    p9 = plot(1:dur,agIRFmc',title="Shock to aggregate income",xlabel="t",label="mean c")
+    plot!(1:dur,10*agIRFvc',label="10*var c")
+    plot!(1:dur,agIRFmw',label="mean cash")
+    plot!(1:dur,10*agIRFvw',label="10*var cash")
+    savefig(p9, "plots/Huggett/HuggettagIRFmoments.png")
 
-    # fig=figure()
-    # subplot(121)
-    # plot(wgrid,c)
-    # xlabel("Cash on hand")
-    # ylabel("Consumption")
-    # title("Steady State Policy Function")
-    # subplot(122)
-    # plot(wgrid,m)
-    # xlabel("Cash on hand")
-    # ylabel("Density")
-    # title("Steady State Wealth Distribution")
-end
+    p10 = plot(1:dur,lsIRFmc',title="Shock to log variance of idiosyncratic income",xlabel="t",label="mean c")
+    plot!(1:dur,10*lsIRFvc',label="10*var c")
+    plot!(1:dur,lsIRFmw',label="mean cash")
+    plot!(1:dur,10*lsIRFvw',label="10*var cash")
+    savefig(p10, "plots/Huggett/HuggettlsIRFmoments.png")
